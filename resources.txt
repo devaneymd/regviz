@@ -1,0 +1,5 @@
+Shiny documentation:
+  https://shiny.posit.co/r/getstarted/shiny-basics/lesson1/index.html
+
+Creating checkbox group from column names:
+  https://www.geeksforgeeks.org/create-dynamic-checkboxgroupinput-in-shiny-package-using-r/#
