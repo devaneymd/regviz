@@ -3,3 +3,6 @@ Shiny documentation:
 
 Creating checkbox group from column names:
   https://www.geeksforgeeks.org/create-dynamic-checkboxgroupinput-in-shiny-package-using-r/#
+
+Loading UI only after data is selected:
+  https://stackoverflow.com/questions/38931289/show-box-only-when-data-is-loaded-in-shiny-app

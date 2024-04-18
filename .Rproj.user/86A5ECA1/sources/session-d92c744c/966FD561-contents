@@ -26,7 +26,8 @@ ui <- fluidPage(
 
   # Testing
   verbatimTextOutput("summary"),
-  checkboxGroupInput(inputId = "predictors", label = NULL)
+  uiOutput("response"),
+  uiOutput("predictors")
 
 )
 
@@ -38,9 +39,28 @@ server <- function(input, output) {
     read.csv(input$file$datapath)
   })
 
-  observe({
+  # Create a drop down box of variables to choose as response
+  output$response <- renderUI({
+    response <- names(df())
+    selectInput(
+      inputId = "response",
+      label = "Select Response",
+      choices = response,
+      multiple = FALSE
+    )
+  })
+
+  # Create a group of check boxes to select multiple predictors
+  output$predictors <- renderUI({
     predictors <- names(df())
-    updateCheckboxGroupInput(inputId = "predictors", label = "Select Predictors", choices = predictors, selected = NULL)
+    # remove the selected response from the list
+    predictors <- predictors[predictors != input$response]
+    checkboxGroupInput(
+      inputId = "predictors",
+      label = "Select Predictors",
+      choices = predictors,
+      selected = NULL
+    )
   })
 }
 
