@@ -6,3 +6,15 @@ Creating checkbox group from column names:
 
 Loading UI only after data is selected:
   https://stackoverflow.com/questions/38931289/show-box-only-when-data-is-loaded-in-shiny-app
+
+Drawing a regression line on the plot:
+  https://stackoverflow.com/questions/27769186/shiny-show-buttons-only-after-file-has-been-uploaded
+
+Graphing:
+  https://plotly.com/r/
+
+Creating nested tab panels:
+  https://stackoverflow.com/questions/71132387/nested-tabsets-in-shiny
+
+Residual/QQ plots:
+  https://www.geeksforgeeks.org/how-to-create-a-residual-plot-in-r/
