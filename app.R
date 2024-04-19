@@ -35,13 +35,24 @@ ui <- page_sidebar(
     tabsetPanel(
       id = "tabsetPanelID",
       type = "pills",
-      tabPanel("Plots",
-               tabsetPanel(
-                 tabPanel("Simple Regression", plotlyOutput("scatter")),
-                 tabPanel("Residuals", plotlyOutput("residual")),
-                 tabPanel("QQ", plotOutput("qq")),
-                 tabPanel("Density", plotOutput("density"))
-               ))
+      tabPanel(
+        title = "Plots",
+        tabsetPanel(
+          tabPanel(
+            title = "Simple Regression",
+            plotlyOutput("scatter")
+          ),
+          tabPanel(
+            title = "Residuals",
+             plotlyOutput("residual"),
+             fluidRow(
+               splitLayout(cellWidths = c("50%", "50%"),
+               plotOutput("qq"),
+               plotOutput("density"))
+            )
+          )
+        )
+      )
     )
   )
 )
@@ -142,8 +153,8 @@ server <- function(input, output) {
         )
       ), data = df()
     )
-    qqnorm(resid(linear))
-    qqline(resid(linear))
+    qqnorm(resid(linear), pch = 16, col = "#1f77b4")
+    qqline(resid(linear), col = "#ff8d29", lwd = 2)
   })
 
   output$density <- renderPlot({
@@ -156,7 +167,7 @@ server <- function(input, output) {
         )
       ), data = df()
     )
-    plot(density(resid(linear)))
+    plot(density(resid(linear)), col = "#ff8d29", lwd = 2)
   })
 }
 
