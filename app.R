@@ -32,23 +32,31 @@ ui <- page_sidebar(
   ),
 
   mainPanel(
-    tabsetPanel(
-      id = "tabsetPanelID",
-      type = "pills",
-      tabPanel(
-        title = "Plots",
-        tabsetPanel(
-          tabPanel(
-            title = "Simple Regression",
-            plotlyOutput("scatter")
-          ),
-          tabPanel(
-            title = "Residuals",
-             plotlyOutput("residual"),
-             fluidRow(
-               splitLayout(cellWidths = c("50%", "50%"),
-               plotOutput("qq"),
-               plotOutput("density"))
+    # Only render the panels after the data is selected
+    conditionalPanel(
+      condition = "input.response",
+      # Main tab navigation
+      tabsetPanel(
+        id = "tabsetPanelID",
+        type = "pills",
+        # Plot tab
+        tabPanel(
+          title = "Plots",
+          tabsetPanel(
+            # Regression tab
+            tabPanel(
+              title = "Simple Regression",
+              plotlyOutput("scatter")
+            ),
+            # Residuals tab
+            tabPanel(
+              title = "Residuals",
+               plotlyOutput("residual"),
+               fluidRow(
+                 splitLayout(cellWidths = c("50%", "50%"),
+                 plotOutput("qq"),
+                 plotOutput("density"))
+              )
             )
           )
         )
