@@ -18,3 +18,7 @@ Creating nested tab panels:
 
 Residual/QQ plots:
   https://www.geeksforgeeks.org/how-to-create-a-residual-plot-in-r/
+
+Partial regression plots:
+  https://www.geeksforgeeks.org/how-to-create-added-variable-plots-in-r/
+

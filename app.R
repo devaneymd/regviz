@@ -1,6 +1,7 @@
 library(shiny)
 library(bslib)
 library(plotly)
+library(car)
 
 ui <- page_sidebar(
 
@@ -26,7 +27,6 @@ ui <- page_sidebar(
     ),
 
     # UI for choosing response and predictor variables
-    # verbatimTextOutput("summary"),
     uiOutput("response"),
     uiOutput("predictors")
   ),
@@ -57,6 +57,10 @@ ui <- page_sidebar(
                  plotOutput("qq"),
                  plotOutput("density"))
               )
+            ),
+            tabPanel(
+              title = "Partial Dependence",
+              plotOutput("partial_dep")
             )
           )
         )
@@ -177,20 +181,32 @@ server <- function(input, output) {
     })
   })
 
-    output$density <- renderPlot({
-      req(input$predictors, input$response, df())
-      tryCatch({
-        linear <- lm(
-          formula(
-            paste(
-              input$response, "~", input$predictors, collapse = " "
-            )
-          ), data = df()
-        )
-        plot(density(resid(linear)), col = "#ff8d29", lwd = 2)
-    }, error = function(e) {
-        return(NULL)
+  output$density <- renderPlot({
+    req(input$predictors, input$response, df())
+    tryCatch({
+      linear <- lm(
+        formula(
+          paste(
+            input$response, "~", input$predictors, collapse = " "
+          )
+        ), data = df()
+      )
+      plot(density(resid(linear)), col = "#ff8d29", lwd = 2)
+  }, error = function(e) {
+      return(NULL)
     })
+  })
+
+  output$partial_dep <- renderPlot({
+    req(input$predictors, input$response, df())
+    linear <- lm(
+      formula(
+        paste(
+          input$response, "~", paste(input$predictors, collapse = "+"))
+        ), data = df()
+      )
+    avPlots(linear, col = "#1f77b4", col.lines = "#ff8d29",
+            pch = 16, lwd = 2, ask = FALSE)
   })
 }
 
