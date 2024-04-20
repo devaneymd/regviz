@@ -100,82 +100,97 @@ server <- function(input, output) {
   output$scatter <- renderPlotly({
     # Creating the model from user choices
     req(input$predictors, input$response, df())
-    linear <- lm(
-      as.formula(
-        paste(
-          input$response, "~",
-          paste(input$predictors, collapse = "+")
-        )
-      ), data = df()
-    )
-    # Creating a scatter plot
-    plot_ly(
-      x = df()[, input$predictors],
-      y = df()[, input$response],
-      type = "scatter",
-      mode = "markers"
-    ) %>%
-      # Adding a regression line
-      add_lines(x = df()[, input$predictors], y = fitted(linear)) %>%
-      # Formatting the axes and plot
-      layout(
-        title = paste(input$response, " vs. ", paste(input$predictors, collapse = ", ")),
-        xaxis = list(title = input$predictors),
-        yaxis = list(title = input$response),
-        showlegend = FALSE
+    tryCatch({
+      linear <- lm(
+        formula(
+          paste(
+            input$response, "~", input$predictors, collapse = " "
+          )
+        ), data = df()
       )
+      # Creating a scatter plot
+      plot_ly(
+        x = df()[, input$predictors],
+        y = df()[, input$response],
+        type = "scatter",
+        mode = "markers"
+      ) %>%
+        # Adding a regression line
+        add_lines(x = df()[, input$predictors], y = fitted(linear)) %>%
+        # Formatting the axes and plot
+        layout(
+          title = paste(input$response, " vs. ", paste(input$predictors, collapse = ", ")),
+          xaxis = list(title = input$predictors),
+          yaxis = list(title = input$response),
+          showlegend = FALSE
+        )
+    }, error =  function(e) {
+        showNotification("Simple regression only allows for one predictor!", type = "error")
+        return(NULL)
+    })
   })
 
   output$residual <- renderPlotly({
     req(input$predictors, input$response, df())
-    linear <- lm(
-      as.formula(
-        paste(
-          input$response, "~",
-          paste(input$predictors, collapse = "+")
-        )
-      ), data = df()
-    )
-
-    plot_ly(
-      x = fitted(linear),
-      y = resid(linear),
-      type = "scatter",
-      mode = "markers"
-    ) %>%
-      layout(
-        title = "Residuals",
-        xaxis = list(title = "Model"),
-        yaxis = list(title = "Residuals"),
-        showlegend = FALSE
+    tryCatch({
+      linear <- lm(
+        formula(
+          paste(
+            input$response, "~", input$predictors, collapse = " "
+          )
+        ), data = df()
       )
+
+      plot_ly(
+        x = fitted(linear),
+        y = resid(linear),
+        type = "scatter",
+        mode = "markers"
+      ) %>%
+        layout(
+          title = "Residuals",
+          xaxis = list(title = "Model"),
+          yaxis = list(title = "Residuals"),
+          showlegend = FALSE
+        )
+    }, error =  function(e) {
+        showNotification(ui = "Simple regression only allows for one predictor!",
+                         type = "error", duration = 2)
+        return(NULL)
+    })
   })
 
   output$qq <- renderPlot({
     req(input$predictors, input$response, df())
-    linear <- lm(
-      as.formula(
-        paste(
-          input$response, "~",
-          paste(input$predictors, collapse = "+")
-        )
-      ), data = df()
-    )
-    qqnorm(resid(linear), pch = 16, col = "#1f77b4")
-    qqline(resid(linear), col = "#ff8d29", lwd = 2)
+    tryCatch({
+      linear <- lm(
+        formula(
+          paste(
+            input$response, "~", input$predictors, collapse = " "
+          )
+        ), data = df()
+      )
+      qqnorm(resid(linear), pch = 16, col = "#1f77b4")
+      qqline(resid(linear), col = "#ff8d29", lwd = 2)
+    }, error = function(e) {
+        return(NULL)
+    })
   })
 
-  output$density <- renderPlot({
-    req(input$predictors, input$response, df())
-    linear <- lm(
-      as.formula(
-        paste(
-          input$response, "~",
-          paste(input$predictors, collapse = "+")
+    output$density <- renderPlot({
+      req(input$predictors, input$response, df())
+      tryCatch({
+        linear <- lm(
+          formula(
+            paste(
+              input$response, "~", input$predictors, collapse = " "
+            )
+          ), data = df()
         )
-      ), data = df()
-    )
-    plot(density(resid(linear)), col = "#ff8d29", lwd = 2)
+        plot(density(resid(linear)), col = "#ff8d29", lwd = 2)
+    }, error = function(e) {
+        return(NULL)
+    })
   })
 }
 
