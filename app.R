@@ -2,9 +2,11 @@ library(shiny)
 library(bslib)
 library(plotly)
 library(car)
+library(MASS)
+
 
 ui <- page_sidebar(
-
+  withMathJax(),
   # Application name
   titlePanel("Regression Exploration"),
 
@@ -46,7 +48,8 @@ ui <- page_sidebar(
             # Regression tab
             tabPanel(
               title = "Simple Regression",
-              plotlyOutput("scatter")
+              plotlyOutput("scatter"),
+              uiOutput("simple_formula")
             ),
             # Residuals tab
             tabPanel(
@@ -61,6 +64,29 @@ ui <- page_sidebar(
             tabPanel(
               title = "Partial Dependence",
               plotOutput("partial_dep")
+            )
+          )
+        ),
+        # Statistics tab
+        tabPanel(
+          title = "Statistics",
+          tabsetPanel(
+            # Summary tab
+            tabPanel(
+              title = "Summary Stats",
+              verbatimTextOutput("summary"),
+              conditionalPanel(
+                condition = "output.summary",
+                checkboxInput(
+                  inputId = "interaction",
+                  label = "Interaction Effects",
+                  value = FALSE
+                )
+              )
+            ),
+            tabPanel(
+              title = "Optimize AIC",
+              verbatimTextOutput("best")
             )
           )
         )
@@ -207,6 +233,66 @@ server <- function(input, output) {
       )
     avPlots(linear, col = "#1f77b4", col.lines = "#ff8d29",
             pch = 16, lwd = 2, ask = FALSE)
+  })
+
+
+  output$summary <- renderPrint({
+    req(input$predictors, input$response, df())
+    linear <- lm(
+      formula(
+        paste(
+          input$response, "~",
+          paste(input$predictors,
+                collapse = ifelse(input$interaction, "*", "+")))
+      ), data = df()
+    )
+    summary(linear)
+  })
+
+  output$best <- renderPrint({
+    req(input$response, input$predictors, df())
+    null_linear <- lm(
+      formula(
+        paste(
+          input$response, "~", "1"
+        )
+      ), data = df()
+    )
+    forward_select <- stepAIC(null_linear,
+                              paste(input$response, "~",
+                                    paste(input$predictors,
+                                          collapse = "*")),
+                              direction = "forward",
+                              trace = FALSE)
+    forward_select$call
+    forward_select$anova
+  })
+
+  output$simple_formula <- renderUI({
+    req(input$predictors, input$response, df())
+    linear <- lm(
+      formula(
+        paste(
+          input$response, "~", input$predictors, collapse = " "
+        )
+      ), data = df()
+    )
+    withMathJax(
+      paste(
+        "$$\\beta_0=",
+        linear$coefficients[1],
+        "\\quad\\beta_1=",
+        linear$coefficients[2],
+        "$$"
+      ),
+      paste(
+        "$$y=",
+        linear$coefficients[1],
+        "+",
+        linear$coefficients[2],
+        "x$$"
+        )
+      )
   })
 }
 
