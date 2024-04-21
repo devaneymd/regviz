@@ -35,6 +35,7 @@ ui <- page_sidebar(
   ),
 
   mainPanel(
+    p("Some random text here"),
     # Only render the panels after the data is selected
     conditionalPanel(
       condition = "input.response",
@@ -88,7 +89,7 @@ ui <- page_sidebar(
             tabPanel(
               title = "Simple Regression",
               plotlyOutput("scatter"),
-              uiOutput("simple_formula")
+              uiOutput("simple_formula"),
             ),
             # Residuals tab
             tabPanel(
@@ -247,6 +248,9 @@ server <- function(input, output) {
       return(NULL)
     }
     withMathJax(
+      h4(
+        "The Regression Equation is:"
+      ),
       paste(
         "$$\\beta_0=", model()$coefficients[1],
         "\\quad\\beta_1=", model()$coefficients[2], "$$"
@@ -255,8 +259,10 @@ server <- function(input, output) {
         "$$\\hat{y}=", model()$coefficients[1],
         ifelse(model()$coefficients[2] > 0, "+", ""),
         model()$coefficients[2], "x$$"
+      ),
+      paste(
+        "For every one unit increase in ", input$predictors, ", ", input$response, ifelse(model()$coefficients[2] > 0, "increases by ", "decreases by"), model()$coefficients[2], "units.")
       )
-    )
   })
 
   output$corr_matrix <- renderPlot({
