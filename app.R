@@ -56,15 +56,19 @@ ui <- fluidPage(
               # Summary tab
               tabPanel(
                 title = "Summary Stats",
-                verbatimTextOutput("summary"),
                 conditionalPanel(
-                  condition = "output.summary",
-                  checkboxInput(
-                    inputId = "interaction",
-                    label = "Interaction Effects",
-                    value = FALSE
+                  condition = "input.predictors != ''",
+                  verbatimTextOutput("summary"),
+                  conditionalPanel(
+                    condition = "output.summary",
+                    checkboxInput(
+                      inputId = "interaction",
+                      label = "Interaction Effects",
+                      value = FALSE
                   ),
-                  uiOutput("multiple_formula")
+                  h4("Values for a 95% Confidence Interval:"),
+                  verbatimTextOutput("confidence"),
+                  )
                 )
               ),
               tabPanel(
@@ -73,8 +77,17 @@ ui <- fluidPage(
                   condition = "input.predictors != ''",
                   h4("Akaike's Information Criterion (AIC)"),
                   verbatimTextOutput("best"),
+                  span("The AIC estimates the amount of information lost
+                       proportional to the number of predictors
+                       in the model. A model with an AIC of \\(X\\) and
+                       \\(p+1\\) predictors would need an AIC that is at
+                       least 10 units lower than a model with \\(p\\)
+                       predictors to be a better fit than the model
+                       with \\(p\\) predictors."),
                   h4(withMathJax(paste("Mallow's", "\\(C_p\\)"))),
-                  verbatimTextOutput("mallows")
+                  verbatimTextOutput("mallows"),
+                  span("Get this number as close to
+                       \\(p+1\\) as possible for the best model fit.")
                 )
               )
             )
@@ -180,9 +193,20 @@ server <- function(input, output) {
         title = paste(input$response, " vs. ", paste(input$predictors, collapse = ", ")),
         xaxis = list(title = input$predictors),
         yaxis = list(title = input$response),
-        showlegend = FALSE
+        showlegend = FALSE,
+        annotations = list(
+          text = paste("$R{^2}:",
+                       round(summary(model())$r.squared, digits = 3),
+                       "$"),
+          x = 4 * max(df()[, input$predictors]) / 5,
+          y = 4 * max(df()[, input$response]) / 5,
+          textfont = list(size = 24),
+          showarrow = FALSE,
+          textangle = "mathjax"
+        )
       )
   })
+
 
   # Creates a plot of the residuals
   output$residual <- renderPlotly({
@@ -227,6 +251,11 @@ server <- function(input, output) {
     summary(model())
   })
 
+  output$confidence <- renderPrint({
+    req(input$predictors, input$response, df())
+    confint(model())
+  })
+
   # Creates a model with the lowest AIC
   output$best <- renderPrint({
     req(input$response, input$predictors, df())
@@ -267,10 +296,7 @@ server <- function(input, output) {
 
   output$corr_matrix <- renderPlot({
     req(df(), input$response)
-    # numeric_cols <- sapply(df(), is.numeric)
-    # numeric_data <- df()[, numeric_cols]
-    # cor(numeric_data)
-    corrplot(cor(df()), method = "number")
+    corrplot(cor(df()), method = "number", bg = "#807f7d")
   })
 
   output$cooks <- renderPlot({
