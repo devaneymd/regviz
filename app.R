@@ -81,7 +81,8 @@ ui <- page_sidebar(
                   inputId = "interaction",
                   label = "Interaction Effects",
                   value = FALSE
-                )
+                ),
+                uiOutput("multiple_formula")
               )
             ),
             tabPanel(
@@ -143,7 +144,7 @@ server <- function(input, output) {
   # Creates a scatter plot of the chosen data and fits a regression line
   output$scatter <- renderPlotly({
     req(input$predictors, input$response, df())
-    if(length(input$predictors) > 1) {
+    if (length(input$predictors) > 1) {
       showNotification("Simple regression only allows for one predictor!",
                        type = "error")
       return(NULL)
@@ -168,7 +169,7 @@ server <- function(input, output) {
 
   output$residual <- renderPlotly({
     req(input$predictors, input$response, df())
-    if(length(input$predictors) > 1) {
+    if (length(input$predictors) > 1) {
       showNotification("Simple regression only allows for one predictor!",
                        type = "error")
       return(NULL)
@@ -189,9 +190,7 @@ server <- function(input, output) {
 
   output$qq <- renderPlot({
     req(input$predictors, input$response, df())
-    if(length(input$predictors) > 1) {
-      showNotification("Simple regression only allows for one predictor!",
-                       type = "error")
+    if (length(input$predictors) > 1) {
       return(NULL)
     }
     qqnorm(resid(model()), pch = 16, col = "#1f77b4")
@@ -200,9 +199,7 @@ server <- function(input, output) {
 
   output$density <- renderPlot({
     req(input$predictors, input$response, df())
-    if(length(input$predictors) > 1) {
-      showNotification("Simple regression only allows for one predictor!",
-                       type = "error")
+    if (length(input$predictors) > 1) {
       return(NULL)
     }
     plot(density(resid(model())), col = "#ff8d29", lwd = 2)
@@ -235,9 +232,7 @@ server <- function(input, output) {
 
   output$simple_formula <- renderUI({
     req(input$predictors, input$response, df())
-    if(length(input$predictors) > 1) {
-      showNotification("Simple regression only allows for one predictor!",
-                       type = "error")
+    if (length(input$predictors) > 1) {
       return(NULL)
     }
     withMathJax(
@@ -246,18 +241,12 @@ server <- function(input, output) {
         "\\quad\\beta_1=", model()$coefficients[2], "$$"
       ),
       paste(
-        "$$y=", model()$coefficients[1],
+        "$$\\hat{y}=", model()$coefficients[1],
         ifelse(model()$coefficients[2] > 0, "+", ""),
         model()$coefficients[2], "x$$"
       )
     )
   })
-
-
-  output$multiple_formula <- renderUI({
-    req(input$predictors, input$response, df())
-  })
-
 }
 
 shinyApp(ui = ui, server = server)
