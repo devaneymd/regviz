@@ -228,9 +228,10 @@ server <- function(input, output) {
     linear <- lm(
       formula(
         paste(
-          input$response, "~", paste(input$predictors, collapse = "+"))
-        ), data = df()
-      )
+          input$response, "~", paste(input$predictors, collapse = "+")
+        )
+      ), data = df()
+    )
     avPlots(linear, col = "#1f77b4", col.lines = "#ff8d29",
             pch = 16, lwd = 2, ask = FALSE)
   })
@@ -270,29 +271,28 @@ server <- function(input, output) {
 
   output$simple_formula <- renderUI({
     req(input$predictors, input$response, df())
-    linear <- lm(
-      formula(
+    tryCatch({
+      linear <- lm(
+        formula(
+          paste(
+            input$response, "~", input$predictors, collapse = " "
+          )
+        ), data = df()
+      )
+      withMathJax(
         paste(
-          input$response, "~", input$predictors, collapse = " "
-        )
-      ), data = df()
-    )
-    withMathJax(
-      paste(
-        "$$\\beta_0=",
-        linear$coefficients[1],
-        "\\quad\\beta_1=",
-        linear$coefficients[2],
-        "$$"
-      ),
-      paste(
-        "$$y=",
-        linear$coefficients[1],
-        "+",
-        linear$coefficients[2],
-        "x$$"
+          "$$\\beta_0=", linear$coefficients[1],
+          "\\quad\\beta_1=", linear$coefficients[2], "$$"
+        ),
+        paste(
+          "$$y=", linear$coefficients[1],
+          ifelse(linear$coefficients[2] > 0, "+", ""),
+          linear$coefficients[2], "x$$"
         )
       )
+    }, error = function(e) {
+        return(NULL)
+    })
   })
 }
 

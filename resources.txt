@@ -22,3 +22,5 @@ Residual/QQ plots:
 Partial regression plots:
   https://www.geeksforgeeks.org/how-to-create-added-variable-plots-in-r/
 
+LaTeX in shiny:
+  https://stackoverflow.com/questions/30169101/latex-formula-in-shiny-panel
