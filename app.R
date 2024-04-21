@@ -7,104 +7,105 @@ library(GGally)
 library(olsrr)
 library(corrplot)
 
-ui <- page_sidebar(
+ui <- fluidPage(
   # Application name
   titlePanel("Regression Exploration"),
 
   # Horizontal line break
   tags$hr(),
 
-  sidebar = sidebar(
-    # Loading in the data for regression (csv)
-    fileInput(
-      inputId = "file",
-      label = "Choose Your Data",
-      # Can only upload 1 file
-      multiple = FALSE,
-      # Filters file explorer to csv/txt files
-      accept = c(
-        "text/csv",
-        "text/comma-separated-values,text/plain",
-        ".csv"
-      )
+  sidebarLayout(
+    sidebarPanel = sidebarPanel(
+      # Loading in the data for regression (csv)
+      fileInput(
+        inputId = "file",
+        label = "Choose Your Data",
+        # Can only upload 1 file
+        multiple = FALSE,
+        # Filters file explorer to csv/txt files
+        accept = c(
+          "text/csv",
+          "text/comma-separated-values,text/plain",
+          ".csv"
+        )
+      ),
+      helpText("Note: Remove NA's and row names from your file."),
+      # UI for choosing response and predictor variables
+      uiOutput("response"),
+      uiOutput("predictors")
     ),
-    helpText("Note: Remove NA's and row names from your file."),
-    # UI for choosing response and predictor variables
-    uiOutput("response"),
-    uiOutput("predictors")
-  ),
 
-  mainPanel(
-    p("Some random text here"),
-    # Only render the panels after the data is selected
-    conditionalPanel(
-      condition = "input.response",
-      # Main tab navigation
-      tabsetPanel(
-        id = "tabsetPanelID",
-        type = "pills",
-        # Statistics tab
-        tabPanel(
-          title = "Statistics",
-          tabsetPanel(
-            tabPanel(
-              title = "Correlation Matrix",
-              plotOutput("corr_matrix")
-            ),
-            # Summary tab
-            tabPanel(
-              title = "Summary Stats",
-              verbatimTextOutput("summary"),
-              conditionalPanel(
-                condition = "output.summary",
-                checkboxInput(
-                  inputId = "interaction",
-                  label = "Interaction Effects",
-                  value = FALSE
-                ),
-                uiOutput("multiple_formula")
-              )
-            ),
-            tabPanel(
-              title = "Optimization",
-              conditionalPanel(
-                condition = "input.predictors != ''",
-                h4("Akaike's Information Criterion (AIC)"),
-                verbatimTextOutput("best"),
-                h4(withMathJax(paste("Mallow's", "\\(C_p\\)"))),
-                verbatimTextOutput("mallows")
+    mainPanel = mainPanel(
+      # Only render the panels after the data is selected
+      conditionalPanel(
+        condition = "input.response",
+        # Main tab navigation
+        tabsetPanel(
+          id = "tabsetPanelID",
+          type = "pills",
+          # Statistics tab
+          tabPanel(
+            title = "Statistics",
+            tabsetPanel(
+              tabPanel(
+                title = "Correlation Matrix",
+                plotOutput("corr_matrix")
+              ),
+              # Summary tab
+              tabPanel(
+                title = "Summary Stats",
+                verbatimTextOutput("summary"),
+                conditionalPanel(
+                  condition = "output.summary",
+                  checkboxInput(
+                    inputId = "interaction",
+                    label = "Interaction Effects",
+                    value = FALSE
+                  ),
+                  uiOutput("multiple_formula")
+                )
+              ),
+              tabPanel(
+                title = "Optimization",
+                conditionalPanel(
+                  condition = "input.predictors != ''",
+                  h4("Akaike's Information Criterion (AIC)"),
+                  verbatimTextOutput("best"),
+                  h4(withMathJax(paste("Mallow's", "\\(C_p\\)"))),
+                  verbatimTextOutput("mallows")
+                )
               )
             )
-          )
-        ),
-        # Plot tab
-        tabPanel(
-          title = "Plots",
-          tabsetPanel(
-            tabPanel(
-              title = "Pairwise",
-              plotOutput("pair")
-            ),
-            # Regression tab
-            tabPanel(
-              title = "Simple Regression",
-              plotlyOutput("scatter"),
-              uiOutput("simple_formula"),
-            ),
-            # Residuals tab
-            tabPanel(
-              title = "Residuals",
-               plotlyOutput("residual"),
-               fluidRow(
-                 splitLayout(cellWidths = c("50%", "50%"),
-                 plotOutput("qq"),
-                 plotOutput("density")),
-                 plotOutput("cooks")
+          ),
+          # Plot tab
+          tabPanel(
+            title = "Plots",
+            tabsetPanel(
+              tabPanel(
+                title = "Pairwise",
+                plotOutput("pair")
+              ),
+              # Regression tab
+              tabPanel(
+                title = "Simple Regression",
+                plotlyOutput("scatter"),
+                uiOutput("simple_formula")
+              ),
+              # Residuals tab
+              tabPanel(
+                title = "Residuals",
+                plotlyOutput("residual"),
+                fluidRow(
+                  splitLayout(cellWidths = c("50%", "50%"),
+                              plotOutput("qq"),
+                              plotOutput("density")),
+                  plotOutput("cooks")
+                )
+              ),
+              tabPanel(
+                title = "Partial Dependence",
+                plotOutput("partial_dep")
               )
-            ),
-            tabPanel(
-              title = "Partial Dependence",
-              plotOutput("partial_dep")
             )
           )
         )
@@ -112,6 +113,7 @@ ui <- page_sidebar(
     )
   )
 )
+
 
 
 server <- function(input, output) {
