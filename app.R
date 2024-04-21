@@ -4,9 +4,9 @@ library(plotly)
 library(car)
 library(MASS)
 library(GGally)
+library(olsrr)
 
 ui <- page_sidebar(
-  withMathJax(),
   # Application name
   titlePanel("Regression Exploration"),
 
@@ -27,7 +27,7 @@ ui <- page_sidebar(
         ".csv"
       )
     ),
-
+    helpText("Note: Remove NA's from your file."),
     # UI for choosing response and predictor variables
     uiOutput("response"),
     uiOutput("predictors")
@@ -64,8 +64,14 @@ ui <- page_sidebar(
               )
             ),
             tabPanel(
-              title = "Optimize AIC",
-              verbatimTextOutput("best")
+              title = "Optimization",
+              conditionalPanel(
+                condition = "input.predictors != ''",
+                h4("Akaike's Information Criterion (AIC)"),
+                verbatimTextOutput("best"),
+                h4(withMathJax(paste("Mallow's", "\\(C_p\\)"))),
+                verbatimTextOutput("mallows")
+              )
             )
           )
         ),
@@ -81,7 +87,7 @@ ui <- page_sidebar(
             tabPanel(
               title = "Simple Regression",
               plotlyOutput("scatter"),
-              uiOutput("simple_formula")
+              uiOutput("simple_formula"),
             ),
             # Residuals tab
             tabPanel(
@@ -90,7 +96,8 @@ ui <- page_sidebar(
                fluidRow(
                  splitLayout(cellWidths = c("50%", "50%"),
                  plotOutput("qq"),
-                 plotOutput("density"))
+                 plotOutput("density")),
+                 plotOutput("cooks")
               )
             ),
             tabPanel(
@@ -178,11 +185,6 @@ server <- function(input, output) {
   # Creates a plot of the residuals
   output$residual <- renderPlotly({
     req(input$predictors, input$response, df())
-    if (length(input$predictors) > 1) {
-      showNotification("Simple regression only allows for one predictor!",
-                       type = "error")
-      return(NULL)
-    }
     plot_ly(
       x = fitted(model()),
       y = resid(model()),
@@ -200,9 +202,6 @@ server <- function(input, output) {
   # Create a quantile-quantile plot for residual distribution
   output$qq <- renderPlot({
     req(input$predictors, input$response, df())
-    if (length(input$predictors) > 1) {
-      return(NULL)
-    }
     qqnorm(resid(model()), pch = 16, col = "#1f77b4")
     qqline(resid(model()), col = "#ff8d29", lwd = 2)
   })
@@ -210,9 +209,6 @@ server <- function(input, output) {
   # Creates a plot of the residual distribution
   output$density <- renderPlot({
     req(input$predictors, input$response, df())
-    if (length(input$predictors) > 1) {
-      return(NULL)
-    }
     plot(density(resid(model())), col = "#ff8d29", lwd = 2)
   })
 
@@ -276,6 +272,22 @@ server <- function(input, output) {
     ggpairs(numeric_data)
   })
 
+  output$cooks <- renderPlot({
+    req(df(), input$response, input$predictors)
+    plot(model())
+  })
+
+  output$mallows <- renderPrint({
+    req(df(), input$response, input$predictors)
+    full_model <- lm(
+      formula(
+        paste(
+          input$response, "~."
+        )
+      ), data = df()
+    )
+    ols_mallows_cp(model(), full_model)
+  })
 }
 
 shinyApp(ui = ui, server = server)
