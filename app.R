@@ -83,10 +83,6 @@ ui <- fluidPage(
           tabPanel(
             title = "Plots",
             tabsetPanel(
-              tabPanel(
-                title = "Pairwise",
-                plotOutput("pair")
-              ),
               # Regression tab
               tabPanel(
                 title = "Simple Regression",
@@ -275,12 +271,6 @@ server <- function(input, output) {
     # numeric_data <- df()[, numeric_cols]
     # cor(numeric_data)
     corrplot(cor(df()), method = "number")
-  })
-
-  output$pair <- renderPlot({
-    numeric_cols <- sapply(df(), is.numeric)
-    numeric_data <- df()[, numeric_cols]
-    ggpairs(numeric_data)
   })
 
   output$cooks <- renderPlot({
