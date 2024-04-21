@@ -11,7 +11,7 @@ library(shinythemes)
 ui <- fluidPage(
   theme = shinytheme("yeti"),
   # Application name
-  titlePanel("Regression Exploration"),
+  titlePanel("Linear Regression"),
 
   # Horizontal line break
   tags$hr(),
@@ -201,9 +201,8 @@ server <- function(input, output) {
                        "$"),
           x = 4 * max(df()[, input$predictors]) / 5,
           y = 4 * max(df()[, input$response]) / 5,
-          textfont = list(size = 24),
           showarrow = FALSE,
-          textangle = "mathjax"
+          font = list(size = 28)
         )
       )
   })
@@ -297,7 +296,7 @@ server <- function(input, output) {
 
   output$corr_matrix <- renderPlot({
     req(df(), input$response)
-    corrplot(cor(df()), method = "number", bg = "#8f8e8c")
+    corrplot(cor(df()), method = "number", bg = "#8c8a87")
   })
 
   output$cooks <- renderPlot({
