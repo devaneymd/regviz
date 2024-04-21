@@ -3,7 +3,7 @@ library(bslib)
 library(plotly)
 library(car)
 library(MASS)
-
+library(GGally)
 
 ui <- page_sidebar(
   withMathJax(),
@@ -41,10 +41,42 @@ ui <- page_sidebar(
       tabsetPanel(
         id = "tabsetPanelID",
         type = "pills",
+        # Statistics tab
+        tabPanel(
+          title = "Statistics",
+          tabsetPanel(
+            tabPanel(
+              title = "Correlation Matrix",
+              verbatimTextOutput("corr_matrix")
+            ),
+            # Summary tab
+            tabPanel(
+              title = "Summary Stats",
+              verbatimTextOutput("summary"),
+              conditionalPanel(
+                condition = "output.summary",
+                checkboxInput(
+                  inputId = "interaction",
+                  label = "Interaction Effects",
+                  value = FALSE
+                ),
+                uiOutput("multiple_formula")
+              )
+            ),
+            tabPanel(
+              title = "Optimize AIC",
+              verbatimTextOutput("best")
+            )
+          )
+        ),
         # Plot tab
         tabPanel(
           title = "Plots",
           tabsetPanel(
+            tabPanel(
+              title = "Pairwise",
+              plotOutput("pair")
+            ),
             # Regression tab
             tabPanel(
               title = "Simple Regression",
@@ -64,30 +96,6 @@ ui <- page_sidebar(
             tabPanel(
               title = "Partial Dependence",
               plotOutput("partial_dep")
-            )
-          )
-        ),
-        # Statistics tab
-        tabPanel(
-          title = "Statistics",
-          tabsetPanel(
-            # Summary tab
-            tabPanel(
-              title = "Summary Stats",
-              verbatimTextOutput("summary"),
-              conditionalPanel(
-                condition = "output.summary",
-                checkboxInput(
-                  inputId = "interaction",
-                  label = "Interaction Effects",
-                  value = FALSE
-                ),
-                uiOutput("multiple_formula")
-              )
-            ),
-            tabPanel(
-              title = "Optimize AIC",
-              verbatimTextOutput("best")
             )
           )
         )
@@ -167,6 +175,7 @@ server <- function(input, output) {
       )
   })
 
+  # Creates a plot of the residuals
   output$residual <- renderPlotly({
     req(input$predictors, input$response, df())
     if (length(input$predictors) > 1) {
@@ -188,6 +197,7 @@ server <- function(input, output) {
       )
   })
 
+  # Create a quantile-quantile plot for residual distribution
   output$qq <- renderPlot({
     req(input$predictors, input$response, df())
     if (length(input$predictors) > 1) {
@@ -197,6 +207,7 @@ server <- function(input, output) {
     qqline(resid(model()), col = "#ff8d29", lwd = 2)
   })
 
+  # Creates a plot of the residual distribution
   output$density <- renderPlot({
     req(input$predictors, input$response, df())
     if (length(input$predictors) > 1) {
@@ -205,18 +216,20 @@ server <- function(input, output) {
     plot(density(resid(model())), col = "#ff8d29", lwd = 2)
   })
 
+  # Creates partial dependent/added variable plots
   output$partial_dep <- renderPlot({
     req(input$predictors, input$response, df())
     avPlots(model(), col = "#1f77b4", col.lines = "#ff8d29",
             pch = 16, lwd = 2, ask = FALSE)
   })
 
-
+  # Prints various model statistics
   output$summary <- renderPrint({
     req(input$predictors, input$response, df())
     summary(model())
   })
 
+  # Creates a model with the lowest AIC
   output$best <- renderPrint({
     req(input$response, input$predictors, df())
     null_model <- lm(formula(paste(input$response, "~", "1")), data = df())
@@ -230,6 +243,7 @@ server <- function(input, output) {
     forward_select$anova
   })
 
+  # Creates the formula y_hat = beta_0 + beta_1*x
   output$simple_formula <- renderUI({
     req(input$predictors, input$response, df())
     if (length(input$predictors) > 1) {
@@ -247,6 +261,21 @@ server <- function(input, output) {
       )
     )
   })
+
+  output$corr_matrix <- renderPrint({
+    req(df())
+    numeric_cols <- sapply(df(), is.numeric)
+    numeric_data <- df()[, numeric_cols]
+    cor(numeric_data)
+  })
+
+  output$pair <- renderPlot({
+    req(df())
+    numeric_cols <- sapply(df(), is.numeric)
+    numeric_data <- df()[, numeric_cols]
+    ggpairs(numeric_data)
+  })
+
 }
 
 shinyApp(ui = ui, server = server)
