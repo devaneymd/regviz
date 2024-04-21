@@ -5,6 +5,7 @@ library(car)
 library(MASS)
 library(GGally)
 library(olsrr)
+library(corrplot)
 
 ui <- page_sidebar(
   # Application name
@@ -27,7 +28,7 @@ ui <- page_sidebar(
         ".csv"
       )
     ),
-    helpText("Note: Remove NA's from your file."),
+    helpText("Note: Remove NA's and row names from your file."),
     # UI for choosing response and predictor variables
     uiOutput("response"),
     uiOutput("predictors")
@@ -47,7 +48,7 @@ ui <- page_sidebar(
           tabsetPanel(
             tabPanel(
               title = "Correlation Matrix",
-              verbatimTextOutput("corr_matrix")
+              plotOutput("corr_matrix")
             ),
             # Summary tab
             tabPanel(
@@ -87,7 +88,7 @@ ui <- page_sidebar(
             tabPanel(
               title = "Simple Regression",
               plotlyOutput("scatter"),
-              uiOutput("simple_formula"),
+              uiOutput("simple_formula")
             ),
             # Residuals tab
             tabPanel(
@@ -258,15 +259,15 @@ server <- function(input, output) {
     )
   })
 
-  output$corr_matrix <- renderPrint({
-    req(df())
-    numeric_cols <- sapply(df(), is.numeric)
-    numeric_data <- df()[, numeric_cols]
-    cor(numeric_data)
+  output$corr_matrix <- renderPlot({
+    req(df(), input$response)
+    # numeric_cols <- sapply(df(), is.numeric)
+    # numeric_data <- df()[, numeric_cols]
+    # cor(numeric_data)
+    corrplot(cor(df()), method = "number")
   })
 
   output$pair <- renderPlot({
-    req(df())
     numeric_cols <- sapply(df(), is.numeric)
     numeric_data <- df()[, numeric_cols]
     ggpairs(numeric_data)
@@ -288,6 +289,7 @@ server <- function(input, output) {
     )
     ols_mallows_cp(model(), full_model)
   })
+
 }
 
 shinyApp(ui = ui, server = server)
