@@ -6,8 +6,10 @@ library(MASS)
 library(GGally)
 library(olsrr)
 library(corrplot)
+library(shinythemes)
 
 ui <- fluidPage(
+  theme = shinytheme("yeti"),
   # Application name
   titlePanel("Regression Exploration"),
 
