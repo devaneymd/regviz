@@ -59,6 +59,7 @@ ui <- fluidPage(
                 conditionalPanel(
                   condition = "input.predictors != ''",
                   verbatimTextOutput("summary"),
+                  uiOutput("multiple_formula"),
                   conditionalPanel(
                     condition = "output.summary",
                     checkboxInput(
@@ -296,7 +297,7 @@ server <- function(input, output) {
 
   output$corr_matrix <- renderPlot({
     req(df(), input$response)
-    corrplot(cor(df()), method = "number", bg = "#807f7d")
+    corrplot(cor(df()), method = "number", bg = "#8f8e8c")
   })
 
   output$cooks <- renderPlot({
@@ -315,6 +316,31 @@ server <- function(input, output) {
     )
     ols_mallows_cp(model(), full_model)
   })
+
+  output$multiple_formula <- renderUI({
+    req(input$predictors, input$response, df())
+
+    coefficients <- model()$coefficients
+    # Start an equation environment with the aligned setting
+    equation <- "\\begin{equation}\\begin{aligned}"
+    # Create the default equation with just the intercept
+    equation <- paste(equation, "\\mathbf{ ", input$response, "}", " = ", round(coefficients[1], digits = 5))
+    # Append the selected terms to the equation
+    for (i in 1:length(input$predictors)) {
+      equation <- paste(equation,
+                        ifelse(coefficients[i + 1] > 0, "+", ""),
+                        round(coefficients[i + 1], digits = 5),
+                        "\\mathbf{", input$predictors[i], "}")
+
+      # Equation is getting too long, put the rest on a new line
+      if (i %% 4 == 0)
+        equation <- paste(equation, "\\\\")
+    }
+
+    equation <- paste(equation, "\\end{aligned}\\end{equation}")
+    withMathJax(equation)
+  })
+
 
 }
 
