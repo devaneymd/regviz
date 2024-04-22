@@ -160,6 +160,7 @@ ui <- fluidPage(
                 inputId = "predict",
                 label = "Make Prediction"
               ),
+              uiOutput("predict_mean"),
               verbatimTextOutput("prediction_result")
             )
           )
@@ -461,6 +462,15 @@ server <- function(input, output) {
     )
   })
 
+  output$predict_mean <- renderUI({
+    req(df())
+    checkboxInput(
+      inputId = "predict_mean",
+      label = h5("Predict Mean"),
+      value = FALSE
+    )
+  })
+
 
   output$predict_choice <- renderUI({
     req(input$response, input$predictors, df())
@@ -488,7 +498,13 @@ server <- function(input, output) {
     newdata <- data.frame(t(predictor_values))
     colnames(newdata) <- input$predictors
 
-    make_prediction <- predict(model(), newdata = newdata, interval = "predict")
+    if (input$predict_mean)
+      interval <- "confidence"
+    else
+      interval <- "predict"
+
+
+    make_prediction <- predict(model(), newdata = newdata, interval = interval)
 
     output$prediction_result <- renderPrint({
       make_prediction
