@@ -478,6 +478,7 @@ server <- function(input, output) {
     )
   })
 
+  # Calculate RMSE for model fit testing
   output$rmse <- renderPrint({
     req(input$predictors, input$response, df())
 
@@ -485,8 +486,6 @@ server <- function(input, output) {
     predictions <- predict(model(), newdata = predictors)
     RMSE(predictions, df()[[input$response]])
   })
-
-
 
   # Create a tab for allowing user to predict a data point
   output$predict_choice <- renderUI({
