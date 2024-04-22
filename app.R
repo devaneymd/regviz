@@ -34,7 +34,9 @@ ui <- fluidPage(
       helpText("Note: Remove NA's and row names from your file."),
       # UI for choosing response and predictor variables
       uiOutput("response"),
-      uiOutput("predictors")
+      uiOutput("predictors"),
+      uiOutput("transformation")
+
     ),
 
     mainPanel = mainPanel(
@@ -75,9 +77,9 @@ ui <- fluidPage(
                       inputId = "interaction",
                       label = "Interaction Effects",
                       value = FALSE
-                  ),
-                  h4("Values for a 95% Confidence Interval:"),
-                  verbatimTextOutput("confidence"),
+                    ),
+                    h4("Values for a 95% Confidence Interval:"),
+                    verbatimTextOutput("confidence"),
                   )
                 )
               ),
@@ -203,11 +205,18 @@ server <- function(input, output) {
   # Create the linear model to be used throughout
   model <- reactive({
     req(input$predictors, input$response, df())
+    predictors <- input$predictors
+    if (input$transformation == "Square Root") {
+      predictors <- paste0("sqrt(", predictors, ")")
+    } else if (input$transformation == "Natural Logarithm") {
+      predictors <- paste0("log(", predictors, ")")
+    }
+
     lm(
       formula(
         paste(
           input$response, "~",
-          paste(input$predictors,
+          paste(predictors,
                 collapse = ifelse(input$interaction, "*", "+"))
         )
       ), data = df()
@@ -326,6 +335,13 @@ server <- function(input, output) {
     if (length(input$predictors) > 1) {
       return(NULL)
     }
+
+    transformation <- "x$$"
+    if (input$transformation == "Square Root")
+      transformation <- "\\sqrt{x}$$"
+    else if (input$transformation == "Natural Logarithm")
+      transformation <- "\\ln{(x)}$$"
+
     withMathJax(
       h4(
         "The Regression Equation is:"
@@ -337,14 +353,15 @@ server <- function(input, output) {
       paste(
         "$$\\hat{y}=", model()$coefficients[1],
         ifelse(model()$coefficients[2] > 0, "+", ""),
-        model()$coefficients[2], "x$$"
+        model()$coefficients[2], transformation
+      ),
+      span(
+        "For every one unit increase in ", code(input$predictors), ", ",
+        code(input$response), ifelse(model()$coefficients[2] > 0,
+                                     "increases by ", "decreases by"),
+        model()$coefficients[2], "units."
       )
     )
-    span(
-      "For every one unit increase in ", code(input$predictors), ", ",
-      code(input$response), ifelse(model()$coefficients[2] > 0,
-                             "increases by ", "decreases by"),
-      model()$coefficients[2], "units.")
   })
 
   # Create a matrix plot of the correlation values of the data
@@ -376,17 +393,24 @@ server <- function(input, output) {
   output$multiple_formula <- renderUI({
     req(input$predictors, input$response, df())
 
+    transformation <- paste0("\\mathbf{", input$predictors, "}")
+    if (input$transformation == "Square Root")
+      transformation <- paste0("\\sqrt{\\mathbf{", input$predictors, "}}")
+    else if (input$transformation == "Natural Logarithm")
+      transformation <- paste0("\\ln{(\\mathbf{", input$predictors, "})}")
+
     coefficients <- model()$coefficients
     # Start an equation environment with the aligned setting
     equation <- "\\begin{equation}\\begin{aligned}"
     # Create the default equation with just the intercept
-    equation <- paste(equation, "\\mathbf{ ", input$response, "}", " = ", round(coefficients[1], digits = 5))
+    equation <- paste(equation, "\\mathbf{", input$response, "}", " = ",
+                      round(coefficients[1], digits = 5))
     # Append the selected terms to the equation
     for (i in 1:length(input$predictors)) {
       equation <- paste(equation,
                         ifelse(coefficients[i + 1] > 0, "+", ""),
                         round(coefficients[i + 1], digits = 5),
-                        "\\mathbf{", input$predictors[i], "}")
+                        transformation[i])
 
       # Equation is getting too long, put the rest on a new line
       if (i %% 4 == 0)
@@ -411,6 +435,17 @@ server <- function(input, output) {
       ), data = df()
     )
     anova(model(), reduced_model)
+  })
+
+  output$transformation <- renderUI({
+    req(df())
+    transformations <- c("None", "Square Root", "Natural Logarithm")
+    selectInput(
+      inputId = "transformation",
+      label = "Apply Transformation",
+      choices = transformations,
+      selected = NULL
+    )
   })
 
 }
