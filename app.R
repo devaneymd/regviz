@@ -8,12 +8,12 @@ library(olsrr)
 library(corrplot)
 library(shinythemes)
 library(caret)
+library(shinyBS)
 
 ui <- fluidPage(
   theme = shinytheme("yeti"),
   # Application name
   titlePanel("Linear Models"),
-
   # Horizontal line break
   tags$hr(),
 
@@ -36,8 +36,9 @@ ui <- fluidPage(
       # UI for choosing response and predictor variables
       uiOutput("response"),
       uiOutput("predictors"),
-      uiOutput("transformation")
-
+      uiOutput("transformation"),
+      bsTooltip(id = "transformation",
+                title = "Transformation applied to predictors")
     ),
 
     mainPanel = mainPanel(
@@ -55,14 +56,12 @@ ui <- fluidPage(
               tabPanel(
                 title = "Correlation",
                 plotOutput("corr_matrix"),
-                conditionalPanel(
-                  condition = "input.predictors != ''",
-                  h4("Variance Inflation Factor (VIF)"),
-                  verbatimTextOutput("vif"),
-                  span("VIF is a statistic which determines the degree of
-                       correlation between your model's predictors.
-                       A VIF score \\(>\\) 10 indicates multicollinearity
-                       is occuring, which will impact your model's accuracy.")
+                h4("Variance Inflation Factor (VIF)"),
+                verbatimTextOutput("vif"),
+                span("VIF is a statistic which determines the degree of
+                     correlation between your model's predictors.
+                     A VIF score \\(>\\) 10 indicates multicollinearity
+                     is occuring, which will impact your model's accuracy."
                 )
               ),
               # Summary tab
@@ -157,13 +156,16 @@ ui <- fluidPage(
           # Make a prediction on the data
           tabPanel(
             title = "Predict",
-            uiOutput("predict_choice"),
             conditionalPanel(
               condition = "input.predictors != ''",
+              h3("Predict Your Response Variable"),
+              uiOutput("predict_choice"),
               actionButton(
                 inputId = "predict",
                 label = "Make Prediction"
               ),
+              bsTooltip(id = "predict",
+                        title = "Enter data for predictors to make a prediction."),
               uiOutput("predict_mean"),
               verbatimTextOutput("prediction_result"),
               uiOutput("prediction_meaning")
@@ -208,6 +210,7 @@ server <- function(input, output) {
 
   # Create a reduced model for partial F test
   output$reduced_predictors <- renderUI({
+    req(df())
     predictors <- names(df())
     predictors <- predictors[predictors != input$response]
     checkboxGroupInput(
@@ -384,13 +387,13 @@ server <- function(input, output) {
   # Create a matrix plot of the correlation values of the data
   output$corr_matrix <- renderPlot({
     req(df(), input$response)
-    corrplot(cor(df()), method = "number", bg = "#828282")
+    corrplot(cor(df()), method = "square", bg = "#828282")
   })
 
   # Create a plot that shows Cook's distance for outliers
   output$cooks <- renderPlot({
     req(df(), input$response, input$predictors)
-    plot(model())
+    plot(model(), pch = 16, col = "#1f77b4")
   })
 
   # Create an output for Mallow's C_p for model fit
@@ -440,12 +443,16 @@ server <- function(input, output) {
 
   # Calculate the VIF stat
   output$vif <- renderPrint({
-    req(input$response, input$predictors, df())
-    1 / (1 - summary(model())$r.squared)
+    req(input$response, df())
+    if (length(input$predictors) != 0)
+      return(1 / (1 - summary(model())$r.squared))
+    else
+      return(NULL)
   })
 
   # Calculate the partial F test
   output$partial_f <- renderPrint({
+    req(df(), input$response, input$reduced_predictors)
     reduced_model <- lm(
       formula(
         paste(
@@ -496,7 +503,7 @@ server <- function(input, output) {
     for (i in 1:length(input$predictors)) {
       predictor_value <- numericInput(
         inputId = input$predictors[i],
-        label = h5(input$predictors[i]),
+        label = h4(input$predictors[i]),
         value = 0,
         width = "200px"
       )
