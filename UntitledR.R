@@ -149,6 +149,10 @@ ui <- fluidPage(
                 plotOutput("partial_dep")
               )
             )
+          ),
+          # Make a prediction on the data
+          tabPanel(
+            title = "Predict"
           )
         )
       )
@@ -336,10 +340,16 @@ server <- function(input, output) {
       return(NULL)
     }
 
-    h4(
-      "The Regression Equation is:"
-    )
+    transformation <- "x$$"
+    if (input$transformation == "Square Root")
+      transformation <- "\\sqrt{x}$$"
+    else if (input$transformation == "Natural Logarithm")
+      transformation <- "\\ln{(x)}$$"
+
     withMathJax(
+      h4(
+        "The Regression Equation is:"
+      ),
       paste(
         "$$\\beta_0=", model()$coefficients[1],
         "\\quad\\beta_1=", model()$coefficients[2], "$$"
@@ -347,14 +357,15 @@ server <- function(input, output) {
       paste(
         "$$\\hat{y}=", model()$coefficients[1],
         ifelse(model()$coefficients[2] > 0, "+", ""),
-        model()$coefficients[2], "x$$"
+        model()$coefficients[2], transformation
+      ),
+      span(
+        "For every one unit increase in ", code(input$predictors), ", ",
+        code(input$response), ifelse(model()$coefficients[2] > 0,
+                                     "increases by ", "decreases by"),
+        model()$coefficients[2], "units."
       )
     )
-    span(
-      "For every one unit increase in ", code(input$predictors), ", ",
-      code(input$response), ifelse(model()$coefficients[2] > 0,
-                                   "increases by ", "decreases by"),
-      model()$coefficients[2], "units.")
   })
 
   # Create a matrix plot of the correlation values of the data
@@ -386,17 +397,24 @@ server <- function(input, output) {
   output$multiple_formula <- renderUI({
     req(input$predictors, input$response, df())
 
+    transformation <- paste0("\\mathbf{", input$predictors, "}")
+    if (input$transformation == "Square Root")
+      transformation <- paste0("\\sqrt{\\mathbf{", input$predictors, "}}")
+    else if (input$transformation == "Natural Logarithm")
+      transformation <- paste0("\\ln{(\\mathbf{", input$predictors, "})}")
+
     coefficients <- model()$coefficients
     # Start an equation environment with the aligned setting
     equation <- "\\begin{equation}\\begin{aligned}"
     # Create the default equation with just the intercept
-    equation <- paste(equation, "\\mathbf{ ", input$response, "}", " = ", round(coefficients[1], digits = 5))
+    equation <- paste(equation, "\\mathbf{", input$response, "}", " = ",
+                      round(coefficients[1], digits = 5))
     # Append the selected terms to the equation
     for (i in 1:length(input$predictors)) {
       equation <- paste(equation,
                         ifelse(coefficients[i + 1] > 0, "+", ""),
                         round(coefficients[i + 1], digits = 5),
-                        "\\mathbf{", input$predictors[i], "}")
+                        transformation[i])
 
       # Equation is getting too long, put the rest on a new line
       if (i %% 4 == 0)
@@ -433,7 +451,6 @@ server <- function(input, output) {
       selected = NULL
     )
   })
-
 }
 
 shinyApp(ui = ui, server = server)

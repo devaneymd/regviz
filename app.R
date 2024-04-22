@@ -149,6 +149,19 @@ ui <- fluidPage(
                 plotOutput("partial_dep")
               )
             )
+          ),
+          # Make a prediction on the data
+          tabPanel(
+            title = "Predict",
+            uiOutput("predict_choice"),
+            conditionalPanel(
+              condition = "input.predictors != ''",
+              actionButton(
+                inputId = "predict",
+                label = "Make Prediction"
+              ),
+              verbatimTextOutput("prediction_result")
+            )
           )
         )
       )
@@ -446,6 +459,41 @@ server <- function(input, output) {
       choices = transformations,
       selected = NULL
     )
+  })
+
+
+  output$predict_choice <- renderUI({
+    req(input$response, input$predictors, df())
+
+    predictor_values <- list()
+
+    for (i in 1:length(input$predictors)) {
+      predictor_value <- numericInput(
+        inputId = input$predictors[i],
+        label = h5(input$predictors[i]),
+        value = 0,
+        width = "200px"
+      )
+
+      predictor_values[[i]] <- predictor_value
+    }
+
+    do.call(tagList, predictor_values)
+  })
+
+  observeEvent(input$predict, {
+    predictor_values <- sapply(input$predictors,
+                               function(predictor) input[[predictor]])
+
+    newdata <- data.frame(t(predictor_values))
+    colnames(newdata) <- input$predictors
+
+    make_prediction <- predict(model(), newdata = newdata, interval = "predict")
+
+    output$prediction_result <- renderPrint({
+      make_prediction
+    })
+
   })
 
 }
