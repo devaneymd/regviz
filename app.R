@@ -78,7 +78,7 @@ ui <- fluidPage(
                       label = "Interaction Effects",
                       value = FALSE
                     ),
-                    h4("Values for a 95% Confidence Interval:"),
+                    h4("Coefficient Values for a 95% Confidence Interval:"),
                     verbatimTextOutput("confidence"),
                   )
                 )
@@ -172,7 +172,6 @@ ui <- fluidPage(
 )
 
 
-
 server <- function(input, output) {
   # Create a data frame from the user selected data
   df <- reactive({
@@ -203,7 +202,7 @@ server <- function(input, output) {
     )
   })
 
-
+  # Create a reduced model for partial F test
   output$reduced_predictors <- renderUI({
     predictors <- names(df())
     predictors <- predictors[predictors != input$response]
@@ -215,7 +214,6 @@ server <- function(input, output) {
       selected = NULL
     )
   })
-
 
   # Create the linear model to be used throughout
   model <- reactive({
@@ -274,7 +272,6 @@ server <- function(input, output) {
       )
   })
 
-
   # Creates a plot of the residuals
   output$residual <- renderPlotly({
     req(input$predictors, input$response, df())
@@ -292,6 +289,7 @@ server <- function(input, output) {
       )
   })
 
+  # Plot the standardized residuals
   output$standard_residual <- renderPlot({
     req(input$predictors, input$response, df())
     plot(model(), which = 1, main = "Standardized Residuals",
@@ -436,11 +434,13 @@ server <- function(input, output) {
     withMathJax(equation)
   })
 
+  # Calculate the VIF stat
   output$vif <- renderPrint({
     req(input$response, input$predictors, df())
     1 / (1 - summary(model())$r.squared)
   })
 
+  # Calculate the partial F test
   output$partial_f <- renderPrint({
     reduced_model <- lm(
       formula(
@@ -452,6 +452,7 @@ server <- function(input, output) {
     anova(model(), reduced_model)
   })
 
+  # Create transformations of the predictors
   output$transformation <- renderUI({
     req(df())
     transformations <- c("None", "Square Root", "Natural Logarithm")
@@ -463,6 +464,7 @@ server <- function(input, output) {
     )
   })
 
+  # Create a checkbox for predicting the mean
   output$predict_mean <- renderUI({
     req(df())
     checkboxInput(
@@ -472,7 +474,7 @@ server <- function(input, output) {
     )
   })
 
-
+  # Create a tab for allowing user to predict a data point
   output$predict_choice <- renderUI({
     req(input$response, input$predictors, df())
 
@@ -492,6 +494,7 @@ server <- function(input, output) {
     do.call(tagList, predictor_values)
   })
 
+  # Wait for make prediction button to be clicked and then make prediction
   observeEvent(input$predict, {
     predictor_values <- sapply(input$predictors,
                                function(predictor) input[[predictor]])
@@ -503,7 +506,6 @@ server <- function(input, output) {
       interval <- "confidence"
     else
       interval <- "predict"
-
 
     make_prediction <- predict(model(), newdata = newdata, interval = interval)
 
@@ -517,9 +519,7 @@ server <- function(input, output) {
            "tell us the 95% confidence interval."
       )
     })
-
   })
-
 }
 
 shinyApp(ui = ui, server = server)
