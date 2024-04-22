@@ -161,7 +161,8 @@ ui <- fluidPage(
                 label = "Make Prediction"
               ),
               uiOutput("predict_mean"),
-              verbatimTextOutput("prediction_result")
+              verbatimTextOutput("prediction_result"),
+              uiOutput("prediction_meaning")
             )
           )
         )
@@ -508,6 +509,13 @@ server <- function(input, output) {
 
     output$prediction_result <- renderPrint({
       make_prediction
+    })
+
+    output$prediction_meaning <- renderUI({
+      span(code("fit"), "tells us the prediction made by model.",
+           code("lwr"), " and ", code("upr"),
+           "tell us the 95% confidence interval."
+      )
     })
 
   })
