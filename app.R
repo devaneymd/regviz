@@ -13,7 +13,7 @@ library(shinyBS)
 ui <- fluidPage(
   theme = shinytheme("yeti"),
   # Application name
-  titlePanel("Linear Models"),
+  titlePanel("An Overview: Linear Models"),
   # Horizontal line break
   tags$hr(),
 
@@ -36,9 +36,10 @@ ui <- fluidPage(
       # UI for choosing response and predictor variables
       uiOutput("response"),
       uiOutput("predictors"),
+      uiOutput("interactions"),
       uiOutput("transformation"),
       bsTooltip(id = "transformation",
-                title = "Transformation applied to predictors")
+                title = "Transformation applied only to main effects")
     ),
 
     mainPanel = mainPanel(
@@ -70,14 +71,6 @@ ui <- fluidPage(
                 conditionalPanel(
                   condition = "input.predictors != ''",
                   verbatimTextOutput("summary"),
-                  conditionalPanel(
-                    condition = "output.summary",
-                    checkboxInput(
-                      inputId = "interaction",
-                      label = "Interaction Effects",
-                      value = FALSE
-                    )
-                  ),
                   uiOutput("multiple_formula"),
                   h4("Root Mean Squared Error (RMSE)"),
                   span("The standard deviation of the error:"),
@@ -213,6 +206,7 @@ server <- function(input, output) {
     req(df())
     predictors <- names(df())
     predictors <- predictors[predictors != input$response]
+    predictors <- c(predictors, input$interactions)
     checkboxGroupInput(
       inputId = "reduced_predictors",
       label = h4("Select Reduced Model Predictors"),
@@ -226,21 +220,45 @@ server <- function(input, output) {
   model <- reactive({
     req(input$predictors, input$response, df())
     predictors <- input$predictors
+
+    # Check for interaction effects
+    if (!is.null(input$interactions)) {
+      # Append interaction terms to predictors
+      for (interaction in input$interactions) {
+        predictors <- c(predictors, interaction)
+      }
+    }
+
     if (input$transformation == "Square Root") {
       predictors <- paste0("sqrt(", predictors, ")")
     } else if (input$transformation == "Natural Logarithm") {
       predictors <- paste0("log(", predictors, ")")
     }
 
+    # Create the formula and model
     lm(
       formula(
         paste(
           input$response, "~",
-          paste(predictors,
-                collapse = ifelse(input$interaction, "*", "+"))
+          paste(predictors, collapse = "+")
         )
       ), data = df()
     )
+  })
+
+
+  # Choosing interaction effects
+  output$interactions <- renderUI({
+    req(input$predictors)
+    if (length(input$predictors) > 1) {
+      interactions <- combn(input$predictors, 2, FUN = paste, collapse = ":")
+      checkboxGroupInput(
+      inputId = "interactions",
+      label = "Select Interaction Effects",
+      choices = interactions,
+      selected = NULL
+      )
+    }
   })
 
   # Creates a scatter plot of the chosen data and fits a regression line
@@ -412,12 +430,19 @@ server <- function(input, output) {
   # Create the model formula for multiple regression
   output$multiple_formula <- renderUI({
     req(input$predictors, input$response, df())
-
-    transformation <- paste0("\\mathbf{", input$predictors, "}")
-    if (input$transformation == "Square Root")
-      transformation <- paste0("\\sqrt{\\mathbf{", input$predictors, "}}")
-    else if (input$transformation == "Natural Logarithm")
-      transformation <- paste0("\\ln{(\\mathbf{", input$predictors, "})}")
+    # Combine main effects and interaction effects into one vector
+    transformation <- c(paste0("\\mathbf{", input$predictors, "}"))
+    transformation <- c(transformation, paste0("\\mathbf{", input$interactions, "}"))
+    # Transform vector based on type of transformation
+    if (input$transformation == "Square Root") {
+      transformation <- c(paste0("\\sqrt{\\mathbf{", input$predictors, "}}"))
+      transformation <- c(transformation, paste0("\\sqrt{\\mathbf{",
+                                                 input$interactions, "}}"))
+    } else if (input$transformation == "Natural Logarithm") {
+      transformation <- c(paste0("\\ln{(\\mathbf{", input$predictors, "})}"))
+      transformation <- c(transformation, paste0("\\ln{(\\mathbf{",
+                                                 input$interactions, "})}"))
+    }
 
     coefficients <- model()$coefficients
     # Start an equation environment with the aligned setting
@@ -426,7 +451,8 @@ server <- function(input, output) {
     equation <- paste(equation, "\\mathbf{", input$response, "}", " = ",
                       round(coefficients[1], digits = 5))
     # Append the selected terms to the equation
-    for (i in 1:length(input$predictors)) {
+    num_predictors <- length(input$predictors) + length(input$interactions)
+    for (i in 1:num_predictors) {
       equation <- paste(equation,
                         ifelse(coefficients[i + 1] > 0, "+", ""),
                         round(coefficients[i + 1], digits = 5),
@@ -453,10 +479,23 @@ server <- function(input, output) {
   # Calculate the partial F test
   output$partial_f <- renderPrint({
     req(df(), input$response, input$reduced_predictors)
+
+    predictors <- input$reduced_predictors
+
+    predictors <- gsub(":", "*", predictors)
+
+    if (input$transformation == "Square Root") {
+      predictors <- paste0("sqrt(", predictors, ")")
+    } else if (input$transformation == "Natural Logarithm") {
+      predictors <- paste0("log(", predictors, ")")
+    }
+
+    # Create the formula and model
     reduced_model <- lm(
       formula(
         paste(
-          input$response, "~", paste(input$reduced_predictors, collapse  = "+")
+          input$response, "~",
+          paste(predictors, collapse = "+")
         )
       ), data = df()
     )
