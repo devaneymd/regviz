@@ -1,9 +1,0 @@
----
-title: "Latex equations"
-author: "Me"
-output: pdf_document
----
-
-
-$$e_i = y_i - \hat{y_i}$$
-
