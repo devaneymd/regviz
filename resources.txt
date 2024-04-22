@@ -25,7 +25,9 @@ Partial regression plots:
 LaTeX in shiny:
   https://stackoverflow.com/questions/30169101/latex-formula-in-shiny-panel
 
-
 Mallow's C_p:
   https://www.statology.org/how-to-calculate-mallows-cp-in-r/
+
+Line breaks in LaTeX equaition:
+  https://stackoverflow.com/questions/2860145/how-can-i-have-linebreaks-in-my-long-latex-equations
 

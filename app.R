@@ -11,7 +11,7 @@ library(shinythemes)
 ui <- fluidPage(
   theme = shinytheme("yeti"),
   # Application name
-  titlePanel("Linear Regression"),
+  titlePanel("Linear Models"),
 
   # Horizontal line break
   tags$hr(),
@@ -50,8 +50,17 @@ ui <- fluidPage(
             title = "Statistics",
             tabsetPanel(
               tabPanel(
-                title = "Correlation Matrix",
-                plotOutput("corr_matrix")
+                title = "Correlation",
+                plotOutput("corr_matrix"),
+                conditionalPanel(
+                  condition = "input.predictors != ''",
+                  h4("Variance Inflation Factor (VIF)"),
+                  verbatimTextOutput("vif"),
+                  span("VIF is a statistic which determines the degree of
+                       correlation between your model's predictors.
+                       A VIF score \\(>\\) 10 indicates multicollinearity
+                       is occuring, which will impact your model's accuracy.")
+                )
               ),
               # Summary tab
               tabPanel(
@@ -90,6 +99,24 @@ ui <- fluidPage(
                   span("Get this number as close to
                        \\(p+1\\) as possible for the best model fit.")
                 )
+              ),
+              tabPanel(
+                title = "Partial F Test",
+                uiOutput("reduced_predictors"),
+                span(em("Start by choosing one less predictor in this
+                        model than your first model.")),
+                conditionalPanel(
+                  condition = "input.predictors != '' && input.reduced_predictors !=''",
+                  verbatimTextOutput("partial_f"),
+                  span("The partial F test models the difference in fit
+                       between the models. This can be seen in the
+                       difference between each model's", code("RSS"),
+                       "(Residual Sum of Squares).",  "Additionally,
+                       it will tell us the importance of the particular variable
+                       that is being left out in the reduced model.
+                       The p-value will determine whether that change
+                       is statistically significant.")
+                )
               )
             )
           ),
@@ -107,6 +134,7 @@ ui <- fluidPage(
               tabPanel(
                 title = "Residuals",
                 plotlyOutput("residual"),
+                plotOutput("standard_residual"),
                 fluidRow(
                   splitLayout(cellWidths = c("50%", "50%"),
                               plotOutput("qq"),
@@ -159,6 +187,20 @@ server <- function(input, output) {
   })
 
 
+  output$reduced_predictors <- renderUI({
+    predictors <- names(df())
+    predictors <- predictors[predictors != input$response]
+    checkboxGroupInput(
+      inputId = "reduced_predictors",
+      label = h4("Select Reduced Model Predictors"),
+      choices = predictors,
+      inline = TRUE,
+      selected = NULL
+    )
+  })
+
+
+  # Create the linear model to be used throughout
   model <- reactive({
     req(input$predictors, input$response, df())
     lm(
@@ -195,6 +237,7 @@ server <- function(input, output) {
         xaxis = list(title = input$predictors),
         yaxis = list(title = input$response),
         showlegend = FALSE,
+        # Show R^2 on the graph
         annotations = list(
           text = paste("$R{^2}:",
                        round(summary(model())$r.squared, digits = 3),
@@ -225,6 +268,12 @@ server <- function(input, output) {
       )
   })
 
+  output$standard_residual <- renderPlot({
+    req(input$predictors, input$response, df())
+    plot(model(), which = 1, main = "Standardized Residuals",
+         pch = 16, col = "#1f77b4")
+  })
+
   # Create a quantile-quantile plot for residual distribution
   output$qq <- renderPlot({
     req(input$predictors, input$response, df())
@@ -251,6 +300,7 @@ server <- function(input, output) {
     summary(model())
   })
 
+  # Create an output of 95% confidence intervals
   output$confidence <- renderPrint({
     req(input$predictors, input$response, df())
     confint(model())
@@ -288,22 +338,28 @@ server <- function(input, output) {
         "$$\\hat{y}=", model()$coefficients[1],
         ifelse(model()$coefficients[2] > 0, "+", ""),
         model()$coefficients[2], "x$$"
-      ),
-      paste(
-        "For every one unit increase in ", input$predictors, ", ", input$response, ifelse(model()$coefficients[2] > 0, "increases by ", "decreases by"), model()$coefficients[2], "units.")
       )
+    )
+    span(
+      "For every one unit increase in ", code(input$predictors), ", ",
+      code(input$response), ifelse(model()$coefficients[2] > 0,
+                             "increases by ", "decreases by"),
+      model()$coefficients[2], "units.")
   })
 
+  # Create a matrix plot of the correlation values of the data
   output$corr_matrix <- renderPlot({
     req(df(), input$response)
-    corrplot(cor(df()), method = "number", bg = "#8c8a87")
+    corrplot(cor(df()), method = "number", bg = "#828282")
   })
 
+  # Create a plot that shows Cook's distance for outliers
   output$cooks <- renderPlot({
     req(df(), input$response, input$predictors)
     plot(model())
   })
 
+  # Create an output for Mallow's C_p for model fit
   output$mallows <- renderPrint({
     req(df(), input$response, input$predictors)
     full_model <- lm(
@@ -316,6 +372,7 @@ server <- function(input, output) {
     ols_mallows_cp(model(), full_model)
   })
 
+  # Create the model formula for multiple regression
   output$multiple_formula <- renderUI({
     req(input$predictors, input$response, df())
 
@@ -340,6 +397,21 @@ server <- function(input, output) {
     withMathJax(equation)
   })
 
+  output$vif <- renderPrint({
+    req(input$response, input$predictors, df())
+    1 / (1 - summary(model())$r.squared)
+  })
+
+  output$partial_f <- renderPrint({
+    reduced_model <- lm(
+      formula(
+        paste(
+          input$response, "~", paste(input$reduced_predictors, collapse  = "+")
+        )
+      ), data = df()
+    )
+    anova(model(), reduced_model)
+  })
 
 }
 
