@@ -482,8 +482,6 @@ server <- function(input, output) {
 
     predictors <- input$reduced_predictors
 
-    predictors <- gsub(":", "*", predictors)
-
     if (input$transformation == "Square Root") {
       predictors <- paste0("sqrt(", predictors, ")")
     } else if (input$transformation == "Natural Logarithm") {
