@@ -7,6 +7,7 @@ library(GGally)
 library(olsrr)
 library(corrplot)
 library(shinythemes)
+library(caret)
 
 ui <- fluidPage(
   theme = shinytheme("yeti"),
@@ -70,17 +71,20 @@ ui <- fluidPage(
                 conditionalPanel(
                   condition = "input.predictors != ''",
                   verbatimTextOutput("summary"),
-                  uiOutput("multiple_formula"),
                   conditionalPanel(
                     condition = "output.summary",
                     checkboxInput(
                       inputId = "interaction",
                       label = "Interaction Effects",
                       value = FALSE
-                    ),
-                    h4("Coefficient Values for a 95% Confidence Interval:"),
-                    verbatimTextOutput("confidence"),
-                  )
+                    )
+                  ),
+                  uiOutput("multiple_formula"),
+                  h4("Root Mean Squared Error (RMSE)"),
+                  span("The standard deviation of the error:"),
+                  verbatimTextOutput("rmse"),
+                  h4("Coefficient Values for a 95% Confidence Interval:"),
+                  verbatimTextOutput("confidence"),
                 )
               ),
               tabPanel(
@@ -473,6 +477,16 @@ server <- function(input, output) {
       value = FALSE
     )
   })
+
+  output$rmse <- renderPrint({
+    req(input$predictors, input$response, df())
+
+    predictors <- df()[, input$predictors, drop = FALSE]
+    predictions <- predict(model(), newdata = predictors)
+    RMSE(predictions, df()[[input$response]])
+  })
+
+
 
   # Create a tab for allowing user to predict a data point
   output$predict_choice <- renderUI({
