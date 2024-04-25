@@ -35,6 +35,14 @@ ui <- fluidPage(
       helpText("Note: Remove NA's and row names from your file."),
       # UI for choosing response and predictor variables
       uiOutput("response"),
+      uiOutput("factors"),
+      conditionalPanel(
+        condition = "input.factors && input.factors != ''",
+        actionButton(
+          inputId = "update_factors",
+          label = "Convert Variables to Factors"
+        )
+      ),
       uiOutput("predictors"),
       uiOutput("interactions"),
       uiOutput("transformation"),
@@ -173,14 +181,25 @@ ui <- fluidPage(
 
 server <- function(input, output) {
   # Create a data frame from the user selected data
-  df <- reactive({
-    req(input$file)
-    read.csv(input$file$datapath)
+  data <- reactiveValues(df = NULL)
+
+  observeEvent(input$file, {
+    data$df <- read.csv(input$file$datapath)
+    updateSelectInput(inputId = "factors", choices = names(data$df))
+  })
+
+  observeEvent(input$update_factors, {
+    if (!is.null(data$df)) {
+      factors <- input$factors
+      data$df[factors] <- lapply(data$df[factors], factor)
+      str(data$df)
+    }
   })
 
   # Create a drop down box of variables to choose as response
   output$response <- renderUI({
-    response <- names(df())
+    req(data$df)
+    response <- names(data$df)
     selectInput(
       inputId = "response",
       label = "Select Response",
@@ -191,8 +210,10 @@ server <- function(input, output) {
 
   # Create a group of check boxes to select multiple predictors
   output$predictors <- renderUI({
-    predictors <- names(df())
+    req(data$df)
+    predictors <- names(data$df)
     predictors <- predictors[predictors != input$response]
+    predictors <- predictors[!predictors %in% input$factors]
     checkboxGroupInput(
       inputId = "predictors",
       label = "Select Predictors",
@@ -201,10 +222,24 @@ server <- function(input, output) {
     )
   })
 
+  # Create a dropdown box for choosing the categorical variables
+  output$factors <- renderUI({
+    req(data$df)
+    factors <- names(data$df)
+    factors <- factors[factors != input$response]
+    selectInput(
+      inputId = "factors",
+      label = "Select Categorical Variables",
+      choices = factors,
+      multiple = TRUE,
+      selected = NULL
+    )
+  })
+
   # Create a reduced model for partial F test
   output$reduced_predictors <- renderUI({
-    req(df())
-    predictors <- names(df())
+    req(data$df)
+    predictors <- names(data$df)
     predictors <- predictors[predictors != input$response]
     predictors <- c(predictors, input$interactions)
     checkboxGroupInput(
@@ -218,7 +253,7 @@ server <- function(input, output) {
 
   # Create the linear model to be used throughout
   model <- reactive({
-    req(input$predictors, input$response, df())
+    req(input$predictors, input$response, data$df)
     predictors <- input$predictors
 
     # Check for interaction effects
@@ -242,7 +277,7 @@ server <- function(input, output) {
           input$response, "~",
           paste(predictors, collapse = "+")
         )
-      ), data = df()
+      ), data = data$df
     )
   })
 
@@ -263,7 +298,7 @@ server <- function(input, output) {
 
   # Creates a scatter plot of the chosen data and fits a regression line
   output$scatter <- renderPlotly({
-    req(input$predictors, input$response, df())
+    req(input$predictors, input$response, data$df)
     if (length(input$predictors) > 1) {
       showNotification("Simple regression only allows for one predictor!",
                        type = "error")
@@ -271,13 +306,13 @@ server <- function(input, output) {
     }
     # Creating a scatter plot
     plot_ly(
-      x = df()[, input$predictors],
-      y = df()[, input$response],
+      x = data$df[, input$predictors],
+      y = data$df[, input$response],
       type = "scatter",
       mode = "markers"
     ) %>%
       # Adding a regression line
-      add_lines(x = df()[, input$predictors], y = fitted(model())) %>%
+      add_lines(x = data$df[, input$predictors], y = fitted(model())) %>%
       # Formatting the axes and plot
       layout(
         title = paste(input$response, " vs. ", paste(input$predictors, collapse = ", ")),
@@ -289,8 +324,8 @@ server <- function(input, output) {
           text = paste("$R{^2}:",
                        round(summary(model())$r.squared, digits = 3),
                        "$"),
-          x = 4 * max(df()[, input$predictors]) / 5,
-          y = 4 * max(df()[, input$response]) / 5,
+          x = 4 * max(data$df[, input$predictors]) / 5,
+          y = 4 * max(data$df[, input$response]) / 5,
           showarrow = FALSE,
           font = list(size = 28)
         )
@@ -299,7 +334,7 @@ server <- function(input, output) {
 
   # Creates a plot of the residuals
   output$residual <- renderPlotly({
-    req(input$predictors, input$response, df())
+    req(input$predictors, input$response, data$df)
     plot_ly(
       x = fitted(model()),
       y = resid(model()),
@@ -316,47 +351,47 @@ server <- function(input, output) {
 
   # Plot the standardized residuals
   output$standard_residual <- renderPlot({
-    req(input$predictors, input$response, df())
+    req(input$predictors, input$response, data$df)
     plot(model(), which = 1, main = "Standardized Residuals",
          pch = 16, col = "#1f77b4")
   })
 
   # Create a quantile-quantile plot for residual distribution
   output$qq <- renderPlot({
-    req(input$predictors, input$response, df())
+    req(input$predictors, input$response, data$df)
     qqnorm(resid(model()), pch = 16, col = "#1f77b4")
     qqline(resid(model()), col = "#ff8d29", lwd = 2)
   })
 
   # Creates a plot of the residual distribution
   output$density <- renderPlot({
-    req(input$predictors, input$response, df())
+    req(input$predictors, input$response, data$df)
     plot(density(resid(model())), col = "#ff8d29", lwd = 2)
   })
 
   # Creates partial dependent/added variable plots
   output$partial_dep <- renderPlot({
-    req(input$predictors, input$response, df())
+    req(input$predictors, input$response, data$df)
     avPlots(model(), col = "#1f77b4", col.lines = "#ff8d29",
             pch = 16, lwd = 2, ask = FALSE)
   })
 
   # Prints various model statistics
   output$summary <- renderPrint({
-    req(input$predictors, input$response, df())
+    req(input$predictors, input$response, data$df)
     summary(model())
   })
 
   # Create an output of 95% confidence intervals
   output$confidence <- renderPrint({
-    req(input$predictors, input$response, df())
+    req(input$predictors, input$response, data$df)
     confint(model())
   })
 
   # Creates a model with the lowest AIC
   output$best <- renderPrint({
-    req(input$response, input$predictors, df())
-    null_model <- lm(formula(paste(input$response, "~", "1")), data = df())
+    req(input$response, input$predictors, data$df)
+    null_model <- lm(formula(paste(input$response, "~", "1")), data = data$df)
     forward_select <- stepAIC(null_model,
                               paste(input$response, "~",
                                     paste(input$predictors,
@@ -369,7 +404,7 @@ server <- function(input, output) {
 
   # Creates the formula y_hat = beta_0 + beta_1*x
   output$simple_formula <- renderUI({
-    req(input$predictors, input$response, df())
+    req(input$predictors, input$response, data$df)
     if (length(input$predictors) > 1) {
       return(NULL)
     }
@@ -404,32 +439,32 @@ server <- function(input, output) {
 
   # Create a matrix plot of the correlation values of the data
   output$corr_matrix <- renderPlot({
-    req(df(), input$response)
-    corrplot(cor(df()), method = "square", bg = "#828282")
+    req(data$df, input$response)
+    corrplot(cor(data$df), method = "square", bg = "#828282")
   })
 
   # Create a plot that shows Cook's distance for outliers
   output$cooks <- renderPlot({
-    req(df(), input$response, input$predictors)
+    req(data$df, input$response, input$predictors)
     plot(model(), pch = 16, col = "#1f77b4")
   })
 
   # Create an output for Mallow's C_p for model fit
   output$mallows <- renderPrint({
-    req(df(), input$response, input$predictors)
+    req(data$df, input$response, input$predictors)
     full_model <- lm(
       formula(
         paste(
           input$response, "~."
         )
-      ), data = df()
+      ), data = data$df
     )
     ols_mallows_cp(model(), full_model)
   })
 
   # Create the model formula for multiple regression
   output$multiple_formula <- renderUI({
-    req(input$predictors, input$response, df())
+    req(input$predictors, input$response, data$df)
     # Combine main effects and interaction effects into one vector
     transformation <- c(paste0("\\mathbf{", input$predictors, "}"))
     transformation <- c(transformation, paste0("\\mathbf{", input$interactions, "}"))
@@ -469,7 +504,7 @@ server <- function(input, output) {
 
   # Calculate the VIF stat
   output$vif <- renderPrint({
-    req(input$response, df())
+    req(input$response, data$df)
     if (length(input$predictors) != 0)
       return(1 / (1 - summary(model())$r.squared))
     else
@@ -478,7 +513,7 @@ server <- function(input, output) {
 
   # Calculate the partial F test
   output$partial_f <- renderPrint({
-    req(df(), input$response, input$reduced_predictors)
+    req(data$df, input$response, input$reduced_predictors)
 
     predictors <- input$reduced_predictors
 
@@ -495,14 +530,14 @@ server <- function(input, output) {
           input$response, "~",
           paste(predictors, collapse = "+")
         )
-      ), data = df()
+      ), data = data$df
     )
     anova(model(), reduced_model)
   })
 
   # Create transformations of the predictors
   output$transformation <- renderUI({
-    req(df())
+    req(data$df)
     transformations <- c("None", "Square Root", "Natural Logarithm")
     selectInput(
       inputId = "transformation",
@@ -514,7 +549,7 @@ server <- function(input, output) {
 
   # Create a checkbox for predicting the mean
   output$predict_mean <- renderUI({
-    req(df())
+    req(data$df)
     checkboxInput(
       inputId = "predict_mean",
       label = h5("Predict Mean"),
@@ -524,16 +559,16 @@ server <- function(input, output) {
 
   # Calculate RMSE for model fit testing
   output$rmse <- renderPrint({
-    req(input$predictors, input$response, df())
+    req(input$predictors, input$response, data$df)
 
-    predictors <- df()[, input$predictors, drop = FALSE]
+    predictors <- data$df[, input$predictors, drop = FALSE]
     predictions <- predict(model(), newdata = predictors)
-    RMSE(predictions, df()[[input$response]])
+    RMSE(predictions, data$df[[input$response]])
   })
 
   # Create a tab for allowing user to predict a data point
   output$predict_choice <- renderUI({
-    req(input$response, input$predictors, df())
+    req(input$response, input$predictors, data$df)
 
     predictor_values <- list()
 
