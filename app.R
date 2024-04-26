@@ -303,7 +303,11 @@ server <- function(input, output) {
       showNotification("Simple regression only allows for one predictor!",
                        type = "error")
       return(NULL)
+    } else if (class(data$df[, input$predictors]) == "factor") {
+      showNotification("Cannot plot regression line on a categorical variable!")
+      return(NULL)
     }
+
     # Creating a scatter plot
     plot_ly(
       x = data$df[, input$predictors],
@@ -406,6 +410,8 @@ server <- function(input, output) {
   output$simple_formula <- renderUI({
     req(input$predictors, input$response, data$df)
     if (length(input$predictors) > 1) {
+      return(NULL)
+    } else if (class(data$df[, input$predictors]) == "factor") {
       return(NULL)
     }
 
