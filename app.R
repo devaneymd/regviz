@@ -16,7 +16,7 @@ ui <- fluidPage(
   titlePanel("An Overview: Linear Models"),
   # Horizontal line break
   tags$hr(),
-
+  # Creates the sidebar for choosing data and model parameters
   sidebarLayout(
     sidebarPanel = sidebarPanel(
       # Loading in the data for regression (csv)
@@ -34,20 +34,23 @@ ui <- fluidPage(
       ),
       helpText("Note: Remove NA's and row names from your file."),
       # UI for choosing response and predictor variables
-      uiOutput("response"),
       uiOutput("factors"),
       conditionalPanel(
-        condition = "input.factors && input.factors != ''",
+        condition = "input.factors",
         actionButton(
           inputId = "update_factors",
           label = "Convert Variables to Factors"
         )
       ),
-      uiOutput("predictors"),
-      uiOutput("interactions"),
-      uiOutput("transformation"),
-      bsTooltip(id = "transformation",
-                title = "Transformation applied only to main effects")
+      conditionalPanel(
+        condition = "input.update_factors",
+        uiOutput("response"),
+        uiOutput("predictors"),
+        uiOutput("interactions"),
+        uiOutput("transformation"),
+        bsTooltip(id = "transformation",
+                  title = "Transformation applied only to main effects")
+      )
     ),
 
     mainPanel = mainPanel(
@@ -198,7 +201,6 @@ server <- function(input, output) {
 
   # Create a drop down box of variables to choose as response
   output$response <- renderUI({
-    req(data$df)
     response <- names(data$df)
     selectInput(
       inputId = "response",
@@ -210,10 +212,8 @@ server <- function(input, output) {
 
   # Create a group of check boxes to select multiple predictors
   output$predictors <- renderUI({
-    req(data$df)
     predictors <- names(data$df)
     predictors <- predictors[predictors != input$response]
-    predictors <- predictors[!predictors %in% input$factors]
     checkboxGroupInput(
       inputId = "predictors",
       label = "Select Predictors",
@@ -440,7 +440,9 @@ server <- function(input, output) {
   # Create a matrix plot of the correlation values of the data
   output$corr_matrix <- renderPlot({
     req(data$df, input$response)
-    corrplot(cor(data$df), method = "square", bg = "#828282")
+    # Can't have factors in the correlation matrix
+    correlation_df <- data$df[, -which(sapply(data$df, class) == "factor")]
+    corrplot(cor(correlation_df), method = "square", bg = "#828282")
   })
 
   # Create a plot that shows Cook's distance for outliers
