@@ -473,18 +473,14 @@ server <- function(input, output) {
   # Create the model formula for multiple regression
   output$multiple_formula <- renderUI({
     req(input$predictors, input$response, data$df)
-    # Combine main effects and interaction effects into one vector
-    transformation <- c(paste0("\\mathbf{", input$predictors, "}"))
-    transformation <- c(transformation, paste0("\\mathbf{", input$interactions, "}"))
+    # Get predictor names from the row names of the model summary
+    predictor_labels <- rownames(summary(model())$coefficients)
+    transformation <- c(paste0("\\mathbf{", predictor_labels, "}"))
     # Transform vector based on type of transformation
     if (input$transformation == "Square Root") {
       transformation <- c(paste0("\\sqrt{\\mathbf{", input$predictors, "}}"))
-      transformation <- c(transformation, paste0("\\sqrt{\\mathbf{",
-                                                 input$interactions, "}}"))
     } else if (input$transformation == "Natural Logarithm") {
       transformation <- c(paste0("\\ln{(\\mathbf{", input$predictors, "})}"))
-      transformation <- c(transformation, paste0("\\ln{(\\mathbf{",
-                                                 input$interactions, "})}"))
     }
 
     coefficients <- model()$coefficients
@@ -493,13 +489,13 @@ server <- function(input, output) {
     # Create the default equation with just the intercept
     equation <- paste(equation, "\\mathbf{", input$response, "}", " = ",
                       round(coefficients[1], digits = 5))
-    # Append the selected terms to the equation
-    num_predictors <- length(input$predictors) + length(input$interactions)
+    # Append the selected terms to the equation, -1 to exclude intercept
+    num_predictors <- length(predictor_labels) - 1
     for (i in 1:num_predictors) {
       equation <- paste(equation,
                         ifelse(coefficients[i + 1] > 0, "+", ""),
                         round(coefficients[i + 1], digits = 5),
-                        transformation[i])
+                        transformation[i + 1])
 
       # Equation is getting too long, put the rest on a new line
       if (i %% 4 == 0)
