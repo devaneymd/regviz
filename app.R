@@ -414,12 +414,21 @@ server <- function(input, output) {
     } else if (class(data$df[, input$predictors]) == "factor") {
       return(NULL)
     }
-
+    # Change equation display based on selected transformation
     transformation <- "x$$"
+    interpretation <- ""
     if (input$transformation == "Square Root")
       transformation <- "\\sqrt{x}$$"
     else if (input$transformation == "Natural Logarithm")
       transformation <- "\\ln{(x)}$$"
+    else if (input$transformation == "None")
+      interpretation <- span(
+        "For every one unit increase in ", code(input$predictors), ", ",
+        code(input$response), ifelse(model()$coefficients[2] > 0,
+                                     "increases by ", "decreases by"),
+        model()$coefficients[2], "units."
+      )
+
 
     withMathJax(
       h4(
@@ -434,12 +443,7 @@ server <- function(input, output) {
         ifelse(model()$coefficients[2] > 0, "+", ""),
         model()$coefficients[2], transformation
       ),
-      span(
-        "For every one unit increase in ", code(input$predictors), ", ",
-        code(input$response), ifelse(model()$coefficients[2] > 0,
-                                     "increases by ", "decreases by"),
-        model()$coefficients[2], "units."
-      )
+      interpretation
     )
   })
 
