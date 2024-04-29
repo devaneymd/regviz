@@ -73,7 +73,7 @@ ui <- fluidPage(
                 span("VIF is a statistic which determines the degree of
                      correlation between your model's predictors.
                      A VIF score \\(>\\) 10 indicates multicollinearity
-                     is occuring, which will impact your model's accuracy."
+                     is occuring, which will impact your model's reliability."
                 )
               ),
               # Summary tab
@@ -480,12 +480,6 @@ server <- function(input, output) {
     # Get predictor names from the row names of the model summary
     predictor_labels <- rownames(summary(model())$coefficients)
     transformation <- c(paste0("\\mathbf{", predictor_labels, "}"))
-    # Transform vector based on type of transformation
-    if (input$transformation == "Square Root") {
-      transformation <- c(paste0("\\sqrt{\\mathbf{", input$predictors, "}}"))
-    } else if (input$transformation == "Natural Logarithm") {
-      transformation <- c(paste0("\\ln{(\\mathbf{", input$predictors, "})}"))
-    }
 
     coefficients <- model()$coefficients
     # Start an equation environment with the aligned setting
