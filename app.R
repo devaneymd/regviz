@@ -339,57 +339,92 @@ server <- function(input, output) {
   # Creates a plot of the residuals
   output$residual <- renderPlotly({
     req(input$predictors, input$response, data$df)
-    plot_ly(
-      x = fitted(model()),
-      y = resid(model()),
-      type = "scatter",
-      mode = "markers"
-    ) %>%
-      layout(
-        title = "Residuals",
-        xaxis = list(title = "Model"),
-        yaxis = list(title = "Residuals"),
-        showlegend = FALSE
-      )
+    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+        && input$transformation != "None") {
+      return(NULL)
+    } else {
+      plot_ly(
+        x = fitted(model()),
+        y = resid(model()),
+        type = "scatter",
+        mode = "markers"
+      ) %>%
+        layout(
+          title = "Residuals",
+          xaxis = list(title = "Model"),
+          yaxis = list(title = "Residuals"),
+          showlegend = FALSE
+        )
+    }
   })
 
   # Plot the standardized residuals
   output$standard_residual <- renderPlot({
     req(input$predictors, input$response, data$df)
-    plot(model(), which = 1, main = "Standardized Residuals",
+    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+        && input$transformation != "None") {
+      return(NULL)
+    } else {
+      plot(model(), which = 1, main = "Standardized Residuals",
          pch = 16, col = "#1f77b4")
+    }
   })
 
   # Create a quantile-quantile plot for residual distribution
   output$qq <- renderPlot({
     req(input$predictors, input$response, data$df)
-    qqnorm(resid(model()), pch = 16, col = "#1f77b4")
-    qqline(resid(model()), col = "#ff8d29", lwd = 2)
+    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+        && input$transformation != "None") {
+      return(NULL)
+    } else {
+      qqnorm(resid(model()), pch = 16, col = "#1f77b4")
+      qqline(resid(model()), col = "#ff8d29", lwd = 2)
+    }
   })
 
   # Creates a plot of the residual distribution
   output$density <- renderPlot({
     req(input$predictors, input$response, data$df)
-    plot(density(resid(model())), col = "#ff8d29", lwd = 2)
+    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+        && input$transformation != "None") {
+      return(NULL)
+    } else {
+      plot(density(resid(model())), col = "#ff8d29", lwd = 2)
+    }
   })
 
   # Creates partial dependent/added variable plots
   output$partial_dep <- renderPlot({
     req(input$predictors, input$response, data$df)
-    avPlots(model(), col = "#1f77b4", col.lines = "#ff8d29",
+    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+        && input$transformation != "None") {
+      return(NULL)
+    } else {
+      avPlots(model(), col = "#1f77b4", col.lines = "#ff8d29",
             pch = 16, lwd = 2, ask = FALSE)
+    }
   })
 
   # Prints various model statistics
   output$summary <- renderPrint({
     req(input$predictors, input$response, data$df)
-    summary(model())
+    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+        && input$transformation != "None") {
+      return(NULL)
+    } else {
+      summary(model())
+    }
   })
 
   # Create an output of 95% confidence intervals
   output$confidence <- renderPrint({
     req(input$predictors, input$response, data$df)
-    confint(model())
+    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+        && input$transformation != "None") {
+      return(NULL)
+    } else {
+      confint(model())
+    }
   })
 
   # Creates a model with the lowest AIC
@@ -458,89 +493,116 @@ server <- function(input, output) {
   # Create a plot that shows Cook's distance for outliers
   output$cooks <- renderPlot({
     req(data$df, input$response, input$predictors)
-    plot(model(), pch = 16, col = "#1f77b4")
+    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+        && input$transformation != "None") {
+      return(NULL)
+    } else {
+      plot(model(), pch = 16, col = "#1f77b4")
+    }
   })
 
   # Create an output for Mallow's C_p for model fit
   output$mallows <- renderPrint({
     req(data$df, input$response, input$predictors)
-    full_model <- lm(
-      formula(
-        paste(
-          input$response, "~."
-        )
-      ), data = data$df
-    )
-    ols_mallows_cp(model(), full_model)
+    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+        && input$transformation != "None") {
+      return(NULL)
+    } else {
+      full_model <- lm(
+        formula(
+          paste(
+            input$response, "~."
+          )
+        ), data = data$df
+      )
+      ols_mallows_cp(model(), full_model)
+    }
   })
 
   # Create the model formula for multiple regression
   output$multiple_formula <- renderUI({
     req(input$predictors, input$response, data$df)
-    # Get predictor names from the row names of the model summary
-    predictor_labels <- rownames(summary(model())$coefficients)
-    transformation <- c(paste0("\\mathbf{", predictor_labels, "}"))
+    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+        && input$transformation != "None") {
+      return(NULL)
+    } else {
+      # Get predictor names from the row names of the model summary
+      predictor_labels <- rownames(summary(model())$coefficients)
+      transformation <- c(paste0("\\mathbf{", predictor_labels, "}"))
 
-    coefficients <- model()$coefficients
-    # Start an equation environment with the aligned setting
-    equation <- "\\begin{equation}\\begin{aligned}"
-    # Create the default equation with just the intercept
-    equation <- paste(equation, "\\mathbf{", input$response, "}", " = ",
-                      round(coefficients[1], digits = 5))
-    # Append the selected terms to the equation, -1 to exclude intercept
-    num_predictors <- length(predictor_labels) - 1
-    for (i in 1:num_predictors) {
-      equation <- paste(equation,
-                        ifelse(coefficients[i + 1] > 0, "+", ""),
-                        round(coefficients[i + 1], digits = 5),
-                        transformation[i + 1])
+      coefficients <- model()$coefficients
+      # Start an equation environment with the aligned setting
+      equation <- "\\begin{equation}\\begin{aligned}"
+      # Create the default equation with just the intercept
+      equation <- paste(equation, "\\mathbf{", input$response, "}", " = ",
+                        round(coefficients[1], digits = 5))
+      # Append the selected terms to the equation, -1 to exclude intercept
+      num_predictors <- length(predictor_labels) - 1
+      for (i in 1:num_predictors) {
+        equation <- paste(equation,
+                          ifelse(coefficients[i + 1] > 0, "+", ""),
+                          round(coefficients[i + 1], digits = 5),
+                          transformation[i + 1])
 
-      # Equation is getting too long, put the rest on a new line
-      if (i %% 4 == 0)
-        equation <- paste(equation, "\\\\")
+        # Equation is getting too long, put the rest on a new line
+        if (i %% 4 == 0)
+          equation <- paste(equation, "\\\\")
+      }
+
+      equation <- paste(equation, "\\end{aligned}\\end{equation}")
+      withMathJax(equation)
     }
-
-    equation <- paste(equation, "\\end{aligned}\\end{equation}")
-    withMathJax(equation)
   })
 
   # Calculate the VIF stat
   output$vif <- renderPrint({
     req(input$response, data$df)
-    if (length(input$predictors) != 0)
-      return(1 / (1 - summary(model())$r.squared))
-    else
+    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+        && input$transformation != "None") {
       return(NULL)
+    } else {
+      return(1 / (1 - summary(model())$r.squared))
+      }
   })
 
   # Calculate the partial F test
   output$partial_f <- renderPrint({
     req(data$df, input$response, input$reduced_predictors)
+    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+        && input$transformation != "None") {
+      return(NULL)
+    } else {
+      predictors <- input$reduced_predictors
 
-    predictors <- input$reduced_predictors
-
-    if (input$transformation == "Square Root") {
-      predictors <- paste0("sqrt(", predictors, ")")
-    } else if (input$transformation == "Natural Logarithm") {
-      predictors <- paste0("log(", predictors, ")")
+      if (input$transformation == "Square Root") {
+        predictors <- paste0("sqrt(", predictors, ")")
+      } else if (input$transformation == "Natural Logarithm") {
+        predictors <- paste0("log(", predictors, ")")
+      }
+      # Create the formula and model
+      reduced_model <- lm(
+        formula(
+          paste(
+            input$response, "~",
+            paste(predictors, collapse = "+")
+          )
+        ), data = data$df
+      )
+      anova(model(), reduced_model)
     }
-
-    # Create the formula and model
-    reduced_model <- lm(
-      formula(
-        paste(
-          input$response, "~",
-          paste(predictors, collapse = "+")
-        )
-      ), data = data$df
-    )
-    anova(model(), reduced_model)
   })
 
   # Create transformations of the predictors
   output$transformation <- renderUI({
     req(data$df)
-    transformations <- c("None", "Square Root", "Natural Logarithm")
+    # if any of the columns are a factor, don't apply a transformation
+    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+        && input$transformation != "None") {
+      transformations <- "None"
+      showNotification("Transformations are not defined for factor variables.")
+    } else {
+      transformations <- c("None", "Square Root", "Natural Logarithm")
+    }
     selectInput(
       inputId = "transformation",
       label = "Apply Transformation",
@@ -563,9 +625,14 @@ server <- function(input, output) {
   output$rmse <- renderPrint({
     req(input$predictors, input$response, data$df)
 
-    predictors <- data$df[, input$predictors, drop = FALSE]
-    predictions <- predict(model(), newdata = predictors)
-    RMSE(predictions, data$df[[input$response]])
+    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+        && input$transformation != "None") {
+      return(NULL)
+    } else {
+      predictors <- data$df[, input$predictors, drop = FALSE]
+      predictions <- predict(model(), newdata = predictors)
+      RMSE(predictions, data$df[[input$response]])
+    }
   })
 
   # Create a tab for allowing user to predict a data point
