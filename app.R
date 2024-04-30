@@ -229,7 +229,7 @@ server <- function(input, output) {
     factors <- factors[factors != input$response]
     selectInput(
       inputId = "factors",
-      label = "Select Categorical Variables",
+      label = "Select Categorical Variables (if any)",
       choices = factors,
       multiple = TRUE,
       selected = NULL
@@ -486,7 +486,11 @@ server <- function(input, output) {
   output$corr_matrix <- renderPlot({
     req(data$df, input$response)
     # Can't have factors in the correlation matrix
-    correlation_df <- data$df[, -which(sapply(data$df, class) == "factor")]
+    # weirdly need to check this otherwise an error will throw when subsetting df
+    if (length(which(sapply(data$df, class) == "factor")) == 0)
+      correlation_df <- data$df
+    else
+      correlation_df <- data$df[, -which(sapply(data$df, class) == "factor")]
     corrplot(cor(correlation_df), method = "square", bg = "#828282")
   })
 
@@ -557,12 +561,17 @@ server <- function(input, output) {
   # Calculate the VIF stat
   output$vif <- renderPrint({
     req(input$response, data$df)
+    vif <- NULL
     if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
         && input$transformation != "None") {
-      return(NULL)
+      return(vif)
+    } else if (length(input$predictors) == 0) {
+      vif <- "Select a predictor..."
+      cat(vif)
     } else {
-      return(1 / (1 - summary(model())$r.squared))
-      }
+      vif <- 1 / (1 - summary(model())$r.squared)
+      return(vif)
+    }
   })
 
   # Calculate the partial F test
@@ -600,6 +609,9 @@ server <- function(input, output) {
         && input$transformation != "None") {
       transformations <- "None"
       showNotification("Transformations are not defined for factor variables.")
+    } else if (any(grepl(":", input$predictors)) && input$transformation != "None") {
+      transformations <- "None"
+      showNotification("Transformations cannot be applied to interaction effects.")
     } else {
       transformations <- c("None", "Square Root", "Natural Logarithm")
     }
@@ -611,7 +623,7 @@ server <- function(input, output) {
     )
   })
 
-  # Create a checkbox for predicting the mean
+  # Create a check box for predicting the mean
   output$predict_mean <- renderUI({
     req(data$df)
     checkboxInput(
