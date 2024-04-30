@@ -45,7 +45,7 @@ ui <- fluidPage(
       conditionalPanel(
         condition = "input.update_factors",
         uiOutput("response"),
-        uiOutput("predictors"),
+        uiOutput("preds"),
         uiOutput("interactions"),
         uiOutput("transformation"),
         bsTooltip(id = "transformation",
@@ -71,7 +71,7 @@ ui <- fluidPage(
                 h4("Variance Inflation Factor (VIF)"),
                 verbatimTextOutput("vif"),
                 span("VIF is a statistic which determines the degree of
-                     correlation between your model's predictors.
+                     correlation between your model's predictorss.
                      A VIF score \\(>\\) 10 indicates multicollinearity
                      is occuring, which will impact your model's reliability."
                 )
@@ -80,7 +80,7 @@ ui <- fluidPage(
               tabPanel(
                 title = "Summary Stats",
                 conditionalPanel(
-                  condition = "input.predictors != ''",
+                  condition = "input.preds != ''",
                   verbatimTextOutput("summary"),
                   uiOutput("multiple_formula"),
                   h4("Root Mean Squared Error (RMSE)"),
@@ -93,7 +93,7 @@ ui <- fluidPage(
               tabPanel(
                 title = "Optimization",
                 conditionalPanel(
-                  condition = "input.predictors != ''",
+                  condition = "input.preds != ''",
                   h4("Akaike's Information Criterion (AIC)"),
                   verbatimTextOutput("best"),
                   span("The AIC estimates the amount of information lost
@@ -111,11 +111,11 @@ ui <- fluidPage(
               ),
               tabPanel(
                 title = "Partial F Test",
-                uiOutput("reduced_predictors"),
+                uiOutput("reduced_preds"),
                 span(em("Start by choosing one less predictor in this
                         model than your first model.")),
                 conditionalPanel(
-                  condition = "input.predictors != '' && input.reduced_predictors !=''",
+                  condition = "input.preds != '' && input.reduced_preds !=''",
                   verbatimTextOutput("partial_f"),
                   span("The partial F test models the difference in fit
                        between the models. This can be seen in the
@@ -161,7 +161,7 @@ ui <- fluidPage(
           tabPanel(
             title = "Predict",
             conditionalPanel(
-              condition = "input.predictors != ''",
+              condition = "input.preds != ''",
               h3("Predict Your Response Variable"),
               uiOutput("predict_choice"),
               actionButton(
@@ -211,14 +211,14 @@ server <- function(input, output) {
     )
   })
 
-  # Create a group of check boxes to select multiple predictors
-  output$predictors <- renderUI({
-    predictors <- names(data$df)
-    predictors <- predictors[predictors != input$response]
+  # Create a group of check boxes to select multiple preds
+  output$preds <- renderUI({
+    preds <- names(data$df)
+    preds <- preds[preds != input$response]
     checkboxGroupInput(
-      inputId = "predictors",
-      label = "Select Predictors",
-      choices = predictors,
+      inputId = "preds",
+      label = "Select preds",
+      choices = preds,
       selected = NULL
     )
   })
@@ -238,15 +238,15 @@ server <- function(input, output) {
   })
 
   # Create a reduced model for partial F test
-  output$reduced_predictors <- renderUI({
+  output$reduced_preds <- renderUI({
     req(data$df)
-    predictors <- names(data$df)
-    predictors <- predictors[predictors != input$response]
-    predictors <- c(predictors, input$interactions)
+    preds <- names(data$df)
+    preds <- preds[preds != input$response]
+    preds <- c(preds, input$interactions)
     checkboxGroupInput(
-      inputId = "reduced_predictors",
-      label = h4("Select Reduced Model Predictors"),
-      choices = predictors,
+      inputId = "reduced_preds",
+      label = h4("Select Reduced Model preds"),
+      choices = preds,
       inline = TRUE,
       selected = NULL
     )
@@ -254,12 +254,12 @@ server <- function(input, output) {
 
   # Create the linear model to be used throughout
   model <- reactive({
-    req(input$predictors, input$response, data$df)
-    preds <- input$predictors
+    req(input$preds, input$response, data$df)
+    preds <- input$preds
 
     # Check for interaction effects
     if (!is.null(input$interactions)) {
-      # Append interaction terms to predictors
+      # Append interaction terms to preds
       for (interaction in input$interactions) {
         preds <- c(preds, interaction)
       }
@@ -267,7 +267,7 @@ server <- function(input, output) {
 
     if (length(input$interactions) > 0 && input$transformation != "None") {
       preds <- preds
-    } else if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))) {
+    } else if (any(sapply(input$preds, function(pred) class(data$df[, pred]) == "factor"))) {
       preds <- preds
     } else if (input$transformation == "Square Root") {
       preds <- paste0("sqrt(", preds, ")")
@@ -289,9 +289,9 @@ server <- function(input, output) {
 
   # Choosing interaction effects
   output$interactions <- renderUI({
-    req(input$predictors)
-    if (length(input$predictors) > 1) {
-      interactions <- combn(input$predictors, 2, FUN = paste, collapse = ":")
+    req(input$preds)
+    if (length(input$preds) > 1) {
+      interactions <- combn(input$preds, 2, FUN = paste, collapse = ":")
       checkboxGroupInput(
       inputId = "interactions",
       label = "Select Interaction Effects",
@@ -303,29 +303,29 @@ server <- function(input, output) {
 
   # Creates a scatter plot of the chosen data and fits a regression line
   output$scatter <- renderPlotly({
-    req(input$predictors, input$response, data$df)
-    if (length(input$predictors) > 1) {
+    req(input$preds, input$response, data$df)
+    if (length(input$preds) > 1) {
       showNotification("Simple regression only allows for one predictor!",
                        type = "error")
       return(NULL)
-    } else if (class(data$df[, input$predictors]) == "factor") {
+    } else if (class(data$df[, input$preds]) == "factor") {
       showNotification("Cannot plot regression line on a categorical variable!")
       return(NULL)
     }
 
     # Creating a scatter plot
     plot_ly(
-      x = data$df[, input$predictors],
+      x = data$df[, input$preds],
       y = data$df[, input$response],
       type = "scatter",
       mode = "markers"
     ) %>%
       # Adding a regression line
-      add_lines(x = data$df[, input$predictors], y = fitted(model())) %>%
+      add_lines(x = data$df[, input$preds], y = fitted(model())) %>%
       # Formatting the axes and plot
       layout(
-        title = paste(input$response, " vs. ", paste(input$predictors, collapse = ", ")),
-        xaxis = list(title = input$predictors),
+        title = paste(input$response, " vs. ", paste(input$preds, collapse = ", ")),
+        xaxis = list(title = input$preds),
         yaxis = list(title = input$response),
         showlegend = FALSE,
         # Show R^2 on the graph
@@ -333,7 +333,7 @@ server <- function(input, output) {
           text = paste("$R{^2}:",
                        round(summary(model())$r.squared, digits = 3),
                        "$"),
-          x = 4 * max(data$df[, input$predictors]) / 5,
+          x = 4 * max(data$df[, input$preds]) / 5,
           y = 4 * max(data$df[, input$response]) / 5,
           showarrow = FALSE,
           font = list(size = 28)
@@ -343,7 +343,7 @@ server <- function(input, output) {
 
   # Creates a plot of the residuals
   output$residual <- renderPlotly({
-    req(input$predictors, input$response, data$df)
+    req(input$preds, input$response, data$df)
     plot_ly(
       x = fitted(model()),
       y = resid(model()),
@@ -360,50 +360,50 @@ server <- function(input, output) {
 
   # Plot the standardized residuals
   output$standard_residual <- renderPlot({
-    req(input$predictors, input$response, data$df)
+    req(input$preds, input$response, data$df)
     plot(model(), which = 1, main = "Standardized Residuals",
          pch = 16, col = "#1f77b4")
   })
 
   # Create a quantile-quantile plot for residual distribution
   output$qq <- renderPlot({
-    req(input$predictors, input$response, data$df)
+    req(input$preds, input$response, data$df)
     qqnorm(resid(model()), pch = 16, col = "#1f77b4")
     qqline(resid(model()), col = "#ff8d29", lwd = 2)
   })
 
   # Creates a plot of the residual distribution
   output$density <- renderPlot({
-    req(input$predictors, input$response, data$df)
+    req(input$preds, input$response, data$df)
     plot(density(resid(model())), col = "#ff8d29", lwd = 2)
   })
 
   # Creates partial dependent/added variable plots
   output$partial_dep <- renderPlot({
-    req(input$predictors, input$response, data$df)
+    req(input$preds, input$response, data$df)
     avPlots(model(), col = "#1f77b4", col.lines = "#ff8d29",
             pch = 16, lwd = 2, ask = FALSE)
   })
 
   # Prints various model statistics
   output$summary <- renderPrint({
-    req(input$predictors, input$response, data$df)
+    req(input$preds, input$response, data$df)
     summary(model())
   })
 
   # Create an output of 95% confidence intervals
   output$confidence <- renderPrint({
-    req(input$predictors, input$response, data$df)
+    req(input$preds, input$response, data$df)
     confint(model())
   })
 
   # Creates a model with the lowest AIC
   output$best <- renderPrint({
-    req(input$response, input$predictors, data$df)
+    req(input$response, input$preds, data$df)
     null_model <- lm(formula(paste(input$response, "~", "1")), data = data$df)
     forward_select <- stepAIC(null_model,
                               paste(input$response, "~",
-                                    paste(input$predictors,
+                                    paste(input$preds,
                                           collapse = "*")),
                               direction = "forward",
                               trace = FALSE)
@@ -413,10 +413,10 @@ server <- function(input, output) {
 
   # Creates the formula y_hat = beta_0 + beta_1*x
   output$simple_formula <- renderUI({
-    req(input$predictors, input$response, data$df)
-    if (length(input$predictors) > 1) {
+    req(input$preds, input$response, data$df)
+    if (length(input$preds) > 1) {
       return(NULL)
-    } else if (class(data$df[, input$predictors]) == "factor") {
+    } else if (class(data$df[, input$preds]) == "factor") {
       return(NULL)
     }
     # Change equation display based on selected transformation
@@ -428,7 +428,7 @@ server <- function(input, output) {
       transformation <- "\\ln{(x)}$$"
     else if (input$transformation == "None")
       interpretation <- span(
-        "For every one unit increase in ", code(input$predictors), ", ",
+        "For every one unit increase in ", code(input$preds), ", ",
         code(input$response), ifelse(model()$coefficients[2] > 0,
                                      "increases by ", "decreases by"),
         model()$coefficients[2], "units."
@@ -465,13 +465,13 @@ server <- function(input, output) {
 
   # Create a plot that shows Cook's distance for outliers
   output$cooks <- renderPlot({
-    req(data$df, input$response, input$predictors)
+    req(data$df, input$response, input$preds)
     plot(model(), pch = 16, col = "#1f77b4")
   })
 
   # Create an output for Mallow's C_p for model fit
   output$mallows <- renderPrint({
-    req(data$df, input$response, input$predictors)
+    req(data$df, input$response, input$preds)
     full_model <- lm(
       formula(
         paste(
@@ -484,7 +484,7 @@ server <- function(input, output) {
 
   # Create the model formula for multiple regression
   output$multiple_formula <- renderUI({
-    req(input$predictors, input$response, data$df)
+    req(input$preds, input$response, data$df)
     # Get predictor names from the row names of the model summary
     predictor_labels <- rownames(summary(model())$coefficients)
     transformation <- c(paste0("\\mathbf{", predictor_labels, "}"))
@@ -496,8 +496,8 @@ server <- function(input, output) {
     equation <- paste(equation, "\\mathbf{", input$response, "}", " = ",
                       round(coefficients[1], digits = 5))
     # Append the selected terms to the equation, -1 to exclude intercept
-    num_predictors <- length(predictor_labels) - 1
-    for (i in 1:num_predictors) {
+    num_preds <- length(predictor_labels) - 1
+    for (i in 1:num_preds) {
       equation <- paste(equation,
                         ifelse(coefficients[i + 1] > 0, "+", ""),
                         round(coefficients[i + 1], digits = 5),
@@ -516,7 +516,7 @@ server <- function(input, output) {
   output$vif <- renderPrint({
     req(input$response, data$df)
     vif <- NULL
-    if (length(input$predictors) == 0) {
+    if (length(input$preds) == 0) {
       vif <- "Select a predictor..."
       cat(vif)
     } else {
@@ -527,31 +527,35 @@ server <- function(input, output) {
 
   # Calculate the partial F test
   output$partial_f <- renderPrint({
-    req(data$df, input$response, input$reduced_predictors)
-    predictors <- input$reduced_predictors
+    req(data$df, input$response, input$reduced_preds)
+    preds <- input$reduced_preds
 
-    if (input$transformation == "Square Root") {
-      predictors <- paste0("sqrt(", predictors, ")")
+    if (length(input$interactions) > 0 && input$transformation != "None") {
+      preds <- preds
+    } else if (any(sapply(input$preds, function(pred) class(data$df[, pred]) == "factor"))) {
+      preds <- preds
+    } else if (input$transformation == "Square Root") {
+      preds <- paste0("sqrt(", preds, ")")
     } else if (input$transformation == "Natural Logarithm") {
-      predictors <- paste0("log(", predictors, ")")
+      preds <- paste0("log(", preds, ")")
     }
     # Create the formula and model
     reduced_model <- lm(
       formula(
         paste(
           input$response, "~",
-          paste(predictors, collapse = "+")
+          paste(preds, collapse = "+")
         )
       ), data = data$df
     )
     anova(model(), reduced_model)
   })
 
-  # Create transformations of the predictors
+  # Create transformations of the preds
   output$transformation <- renderUI({
     req(data$df)
     # if any of the columns are a factor, don't apply a transformation
-    if (any(sapply(input$predictors, function(pred) class(data$df[, pred]) == "factor"))
+    if (any(sapply(input$preds, function(pred) class(data$df[, pred]) == "factor"))
         && input$transformation != "None") {
       transformations <- "None"
       showNotification("Transformations are not defined for factor variables.")
@@ -581,22 +585,22 @@ server <- function(input, output) {
 
   # Calculate RMSE for model fit testing
   output$rmse <- renderPrint({
-    req(input$predictors, input$response, data$df)
-    predictors <- data$df[, input$predictors, drop = FALSE]
-    predictions <- predict(model(), newdata = predictors)
+    req(input$preds, input$response, data$df)
+    preds <- data$df[, input$preds, drop = FALSE]
+    predictions <- predict(model(), newdata = preds)
     RMSE(predictions, data$df[[input$response]])
   })
 
   # Create a tab for allowing user to predict a data point
   output$predict_choice <- renderUI({
-    req(input$response, input$predictors, data$df)
+    req(input$response, input$preds, data$df)
 
     predictor_values <- list()
 
-    for (i in 1:length(input$predictors)) {
+    for (i in 1:length(input$preds)) {
       predictor_value <- numericInput(
-        inputId = input$predictors[i],
-        label = h4(input$predictors[i]),
+        inputId = input$preds[i],
+        label = h4(input$preds[i]),
         value = 0,
         width = "200px"
       )
@@ -609,11 +613,11 @@ server <- function(input, output) {
 
   # Wait for make prediction button to be clicked and then make prediction
   observeEvent(input$predict, {
-    predictor_values <- sapply(input$predictors,
+    predictor_values <- sapply(input$preds,
                                function(predictor) input[[predictor]])
 
     newdata <- data.frame(t(predictor_values))
-    colnames(newdata) <- input$predictors
+    colnames(newdata) <- input$preds
 
     if (input$predict_mean)
       interval <- "confidence"
