@@ -196,7 +196,6 @@ server <- function(input, output) {
     if (!is.null(data$df)) {
       factors <- input$factors
       data$df[factors] <- lapply(data$df[factors], factor)
-      str(data$df)
     }
   })
 
@@ -613,10 +612,10 @@ server <- function(input, output) {
 
     for (i in 1:length(input$preds)) {
       if (class(data$df[[input$preds[i]]]) == "factor") {
-        predictor_value <- textInput(
+        predictor_value <- selectInput(
           inputId = input$preds[i],
           label = h4(input$preds[i]),
-          value = "0",
+          choices = levels(data$df[[input$preds[i]]]),
           width = "200px"
         )
       } else {
@@ -642,7 +641,6 @@ server <- function(input, output) {
 
     newdata <- data.frame(pred_values, stringsAsFactors = TRUE)
     colnames(newdata) <- input$preds
-    str(newdata)
 
     if (input$predict_mean)
       interval <- "confidence"
