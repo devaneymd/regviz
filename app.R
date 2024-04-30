@@ -497,6 +497,8 @@ server <- function(input, output) {
                       round(coefficients[1], digits = 5))
     # Append the selected terms to the equation, -1 to exclude intercept
     num_preds <- length(predictor_labels) - 1
+    reference_levels_title <- "\\(\\text{Reference Levels:}\\)"
+    reference_levels <- "\\("
     for (i in 1:num_preds) {
       equation <- paste(equation,
                         ifelse(coefficients[i + 1] > 0, "+", ""),
@@ -506,10 +508,22 @@ server <- function(input, output) {
       # Equation is getting too long, put the rest on a new line
       if (i %% 4 == 0)
         equation <- paste(equation, "\\\\")
+
+      if (class(data$df[[input$preds[i]]]) == "factor") {
+        reference_levels <- paste(reference_levels,
+                                  "\\text{", input$preds[i], "}:",
+                                  levels(data$df[[input$preds[i]]]), "\\\\")
+      }
     }
 
     equation <- paste(equation, "\\end{aligned}\\end{equation}")
-    withMathJax(equation)
+    reference_levels <- paste(reference_levels, "\\)")
+
+    withMathJax(
+      equation,
+      ifelse(any(sapply(input$preds, function(pred) class(data$df[, pred]) == "factor")),
+             paste(reference_levels_title, reference_levels), "")
+    )
   })
 
   # Calculate the VIF stat
@@ -598,13 +612,21 @@ server <- function(input, output) {
     predictor_values <- list()
 
     for (i in 1:length(input$preds)) {
-      predictor_value <- numericInput(
-        inputId = input$preds[i],
-        label = h4(input$preds[i]),
-        value = 0,
-        width = "200px"
-      )
-
+      if (class(data$df[[input$preds[i]]]) == "factor") {
+        predictor_value <- textInput(
+          inputId = input$preds[i],
+          label = h4(input$preds[i]),
+          value = "0",
+          width = "200px"
+        )
+      } else {
+        predictor_value <- numericInput(
+          inputId = input$preds[i],
+          label = h4(input$preds[i]),
+          value = 0,
+          width = "200px"
+        )
+      }
       predictor_values[[i]] <- predictor_value
     }
 
@@ -613,11 +635,14 @@ server <- function(input, output) {
 
   # Wait for make prediction button to be clicked and then make prediction
   observeEvent(input$predict, {
-    predictor_values <- sapply(input$preds,
-                               function(predictor) input[[predictor]])
+    pred_values <- list()
+    for (i in 1:length(input$preds)) {
+      pred_values[[i]] <- input[[input$preds[i]]]
+    }
 
-    newdata <- data.frame(t(predictor_values))
+    newdata <- data.frame(pred_values, stringsAsFactors = TRUE)
     colnames(newdata) <- input$preds
+    str(newdata)
 
     if (input$predict_mean)
       interval <- "confidence"
