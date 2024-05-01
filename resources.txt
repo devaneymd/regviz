@@ -28,6 +28,6 @@ LaTeX in shiny:
 Mallow's C_p:
   https://www.statology.org/how-to-calculate-mallows-cp-in-r/
 
-Line breaks in LaTeX equaition:
+Line breaks in LaTeX equation:
   https://stackoverflow.com/questions/2860145/how-can-i-have-linebreaks-in-my-long-latex-equations
 

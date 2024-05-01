@@ -1,0 +1,11 @@
+\contentsline {section}{\numberline {1}Abstract}{2}{section.1}%
+\contentsline {section}{\numberline {2}Introduction}{2}{section.2}%
+\contentsline {section}{\numberline {3}Application}{3}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Getting Data}{3}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Exploring Data}{3}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Building the Model}{4}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Visualize}{5}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Fine Tuning}{6}{subsection.3.5}%
+\contentsline {subsection}{\numberline {3.6}Predict}{7}{subsection.3.6}%
+\contentsline {section}{\numberline {4}Conclusion}{8}{section.4}%
+\contentsline {section}{\numberline {5}Works Cited}{8}{section.5}%

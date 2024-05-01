@@ -13,7 +13,7 @@ library(shinyBS)
 ui <- fluidPage(
   theme = shinytheme("yeti"),
   # Application name
-  titlePanel("An Overview: Linear Models"),
+  titlePanel("RegViz"),
   # Horizontal line break
   tags$hr(),
   # Creates the sidebar for choosing data and model parameters
@@ -244,7 +244,7 @@ server <- function(input, output) {
     preds <- c(preds, input$interactions)
     checkboxGroupInput(
       inputId = "reduced_preds",
-      label = h4("Select Reduced Model preds"),
+      label = h4("Select Reduced Model Predictors"),
       choices = preds,
       inline = TRUE,
       selected = NULL

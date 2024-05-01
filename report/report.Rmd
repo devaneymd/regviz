@@ -1,0 +1,164 @@
+---
+title: "RegViz"
+subtitle: "STA3100 Final Project"
+author: "Matthew Devaney"
+date: "2024-04-30"
+bibliography: "references.bib"
+link-citations: true
+output:
+  pdf_document:
+    toc: true
+    number_sections: true
+    fig_caption: yes
+    includes:
+      in_header: preamble.tex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\newpage
+
+# Abstract
+
+A linear model is a statistical concept which aims to represent a linear relationship in a given data set. I created an application, RegViz, in order to allow a user to dynamically interact with linear models. This application includes various model statistics and graphics and most importantly aims to be a user-friendly approach to linear regression in R.
+
+# Introduction
+
+A linear model is a concept that attempts to model data which follow a linear relationship. Specifically, it models the relationship between a response, $\hat{y}$, and any given amount of predictor variables. Combining these two pieces together, we arrive at the following equation:
+\begin{equation}\label{linear}
+    \Large
+    \hat{y_i} = \beta_0 + \beta_1x_{i1} + ... + \beta_kx_{ik} + \epsilon_i
+\end{equation} $$\text{for each predictor}: i = 1, ..., n$$
+
+And a practical example may look like:
+
+\begin{figure}
+    \centering
+    \includegraphics{../img/Equation.png}
+    \caption{Created with RegViz}
+    \label{fig:equation}
+\end{figure}
+
+As you can see, this equation follows a linear relationship between the response and the predictors. $\hat{y_i}$ should take on a range of continuous values, while each $x_i$ may be either continous or categorical. Additionally, the term $\epsilon_i$ must be added to account for error in the model, as it is not possible to account for every single source of variance in the data. The goal is to minimize this error as much as possible, in order to increase the model's ability to represent the relationship in the data. This can be done in multiple ways, one of them being changing around which predictor variables are included in equation (\ref{linear}). In doing so, some interesting and valuable patterns can start to emerge.
+
+This can typically be done using a programming tool such as **R** [@RLanguage]. However, it can be difficult to quickly see the changes between models with different parameters using such a tool. A typical linear regression model in R code looks as follows:
+
+```{r echo=TRUE, results='hide'}
+# Load in a data set
+data <- mtcars
+rownames(data) = NULL
+# Check correlation between independent variables
+cor(data)
+# Convert categorical variables to factors
+data$cyl <- as.factor(data$cyl)
+# Choose parameters for the model and create it
+model <- lm(mpg ~ hp + wt + cyl, data = data)
+# View summary of the model to assess
+summary(model)
+```
+
+All of that and not a single graphic or visualization for us to look at! And when we inevitably want to experiment with other models or parameters, we must use the same [`lm`, `summary`] paradigm over and over again.
+
+That is why I created an application, RegViz, with the help of Shiny [@Shiny], to provide an easy-to-use, interactive, and visually appealing way for users to experiment with linear models. No longer do you need to worry about annoying R code, instead you can simply upload a formatted data set and use a series of check boxes, drop downs, and buttons to view all kinds of information about your model.
+
+# Application
+
+The process of dealing with linear models should generally follow these steps:
+
+\begin{figure}
+    \centering
+    \includegraphics{../img/Picture1.png}
+    \caption{Steps of creating a linear model}
+    \label{fig:diagram}
+\end{figure}
+
+We'll explore how this application accomplishes these tasks in a user-friendly manner in this section.
+
+## Getting Data
+
+While the app cannot choose data for the user (that's their job!), the app will make it easy to upload a csv-formatted file. After that, the user can choose which variables should be treated as categorical and therefore be converted into factors. This is a very important step because factors are how R knows to assign dummy variables to each category when performing linear regression.
+
+## Exploring Data
+
+There are a few important assumptions to consider when performing a linear regression analysis. One of which is the idea of multicollinearity, where 2 or more of the predictors in the model are highly correlated. When this occurs, it makes it difficult to determine the effect of each individual predictor, and this can make the model less reliable. Thankfully, there are some tools to determine whether or not multicollinearity is occuring between predictors. Some of these are the correlation matrix and the variation inflation factor, or VIF [@investopedia], pictured in figure (\ref{fig:explore}). In the correlation matrix, the strength of the correlation corresponds to the size of the square while the sign corresponds to the color. A VIF score $>$ 10 indicates that siginificant multicollinearity is occuring between the predictors.
+
+\begin{figure}
+    \centering
+    \includegraphics{../img/GetData.png}
+    \caption{Choosing data and factors}
+    \label{fig:get}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics{../img/ExploreData.png}
+    \caption{Viewing multicollinearity}
+    \label{fig:explore}
+\end{figure}
+
+## Building the Model
+
+At this point, the data is loaded and formatted, and any signs of multicollinearity have been checked. Now, the model can be created. This can easily be done by selecting a response variable along with one or multiple predictors as shown in figure (\ref{fig:build}). In addition, the user can select certain interaction effects to be included in the model to get a different result. Not pictured are additional model outputs such as the summary, which **dynamically** updates as the user selects different parameters along with all of the other content.
+
+\begin{figure}
+    \centering
+    \includegraphics{../img/Build.png}
+    \caption{Choosing model parameters}
+    \label{fig:build}
+\end{figure}
+
+## Visualize
+
+A pitfall of traditional R code is that while making one graphic is easy, making multiple is not as quick. This application automatically generates multiple informative graphics to help the user get a picture of their model quickly. Below are some of the graphs that can be generated. Figure (\ref{fig:residuals}) [@plotly] demonstrates the very important model statistic, residuals. A residual is given by $e_i = y_i - \hat{y_i}$ and represents the difference between the actual data value and the value predicted by the model. Ideally, the data points would be randomly distributed and close to the line $x = 0$ for the best model fit. The second figure is a plot of added variable plots, which allows us to graphically see the effect of a single parameter in a multiple linear regression model.
+
+\begin{figure}
+    \centering
+    \includegraphics{../img/Residuals.png}
+    \caption{Residuals of a linear regression model}
+    \label{fig:residuals}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics{../img/AddedVariable.png}
+    \caption{Four added variable plots}
+    \label{fig:added}
+\end{figure}
+
+## Fine Tuning
+
+After creating a model, one might ask, can we do better? Thankfully, there are some techniques we can use to determine superior model. All of these techniques revolve around changing the parameters of the model and this application makes it easy to do that. One example of model optimization is the partial F test, which essentially determines the importance of a predictor by comparing a model containing that predictor and another model without it. Also, as seen in figure (\ref{fig:get}), the user has the ability to perform a nonlinear transformation (e.g. square root) on the predictors in order to improve the model fit if the relationship in the data isn't exactly linear.
+
+\begin{figure}
+    \centering
+    \includegraphics{../img/PartialF.png}
+    \caption{Results of a partial F test}
+    \label{fig:partialf}
+\end{figure}
+
+## Predict
+
+Finally, the model should be able to be used to predict new data values! In traditional R code, having to extract all the coefficients from your model and then pair each one up with its respective predictor value is a pain. With RegViz, you can seamlessly input the value of each predictor and create a predicition using your model.
+
+\begin{figure}
+    \centering
+    \includegraphics{../img/Predict.png}
+    \caption{Predicting the response with 3 predictors}
+    \label{fig:predict}
+\end{figure}
+
+\newpage
+
+# Conclusion
+
+This application aims to illustrate results from linear regression models in a user-friendly manner. It includes various model statistics, graphics, and, most importantly, allows the user to dynamically change the model to however they see *fit*. In the future, I would like to add additional features to this application such as polynomial regression, additional tool tips, and interactivity with data outlier detection and removal. Overall, I hope that this application could be beneficial to someone trying to understand how linear regression models work and how they change.
+
+# Works Cited
+
+@RLanguage
+@RStudio
+@Shiny
+@investopedia
+@plotly
